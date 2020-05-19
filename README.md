@@ -99,7 +99,7 @@ p.SetOptions(&pipeline.Options{
     IndexingTasksWhitelist: []string{"SequencerTask"},
 })
 ```
-Above example would run only `SequencerTask` during indexing process
+Above example would run only `SequencerTask` during indexing process. It is useful if you want to reindex the data but you only care about specific set of data.
 
 ## To-Dos:
 * Collects stats for evert stage and every task
