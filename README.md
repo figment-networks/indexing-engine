@@ -101,6 +101,12 @@ p.SetOptions(&pipeline.Options{
 ```
 Above example would run only `SequencerTask` during indexing process. It is useful if you want to reindex the data but you only care about specific set of data.
 
+## Examples
+In `/examples` folder you can find an example of a pipeline. To run it use:
+```shell script
+go run example/main.go
+```
+
 ## To-Dos:
 * Collects stats for evert stage and every task
 * Add context cancellation
