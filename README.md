@@ -100,3 +100,7 @@ p.SetOptions(&pipeline.Options{
 })
 ```
 Above example would run only `SequencerTask` during indexing process
+
+## To-Dos:
+* Collects stats for evert stage and every task
+* Add context cancellation
