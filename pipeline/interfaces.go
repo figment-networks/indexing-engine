@@ -13,9 +13,6 @@ type Payload interface {
 	// Set current height to be processed
 	SetCurrentHeight(int64)
 
-	// Gets current height
-	GetCurrentHeight() int64
-
 	// MarkAsProcessed is invoked by the pipeline when the payload
 	// reaches the end of execution for current height
 	MarkAsProcessed()
@@ -24,20 +21,20 @@ type Payload interface {
 // Source is executed before processing of individual heights.
 // It is responsible for getting start and end height.
 type Source interface {
-	// Runs stage of type Chore
-	Run(context.Context) error
+	// Next gets next height
+	Next(context.Context, Payload) bool
 
-	// Gets start height
-	GetStartHeight() int64
+	// Current returns current height
+	Current() int64
 
-	// Gets end height
-	GetEndHeight() int64
+	// Err return error if any
+	Err() error
 }
 
-// Sink is executed after all height have been processed
+// Sink is executed as a last stage in the pipeline
 type Sink interface {
-	// Runs stage of type Chore
-	Run(context.Context) error
+	// Consume consumes payload
+	Consume(context.Context, Payload) error
 }
 
 // TaskValidator is a type for validating task by provided task name
@@ -75,4 +72,13 @@ type TaskFunc func(context.Context, Payload) error
 // Process calls f(ctx, p).
 func (f TaskFunc) Run(ctx context.Context, p Payload) error {
 	return f(ctx, p)
+}
+
+// Logger is implemented by types wanting to hook up for logging
+type Logger interface {
+	Info(interface{}, ...interface{})
+	Debug(interface{}, ...interface{})
+	DebugJSON(interface{}, ...interface{})
+	Warn(interface{}, ...interface{})
+	Err(error, ...interface{})
 }

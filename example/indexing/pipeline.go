@@ -7,7 +7,7 @@ import (
 )
 
 func StartPipeline() error {
-	p := pipeline.New(NewSource(), NewSink(), NewPayloadFactory())
+	p := pipeline.New(NewPayloadFactory())
 
 	// Set options to control what stages a what indexing tasks to execute
 	p.SetOptions(&pipeline.Options{
@@ -32,7 +32,7 @@ func StartPipeline() error {
 	// Set validator stage
 	p.SetValidatorStage(pipeline.SyncRunner(NewValidatorTask()))
 
-	// Set parser stage
+	// Set syncer stage
 	// Demonstrates use of retrying mechanism for entire stage
 	p.SetSyncerStage(
 		pipeline.RetryingStageRunner(pipeline.SyncRunner(NewSyncerTask()), func(err error) bool {
@@ -50,7 +50,8 @@ func StartPipeline() error {
 	// Add custom stage before existing one
 	// Demonstrates how to use func as a stage runner without a need to use structs
 	beforeFetcherFunc := pipeline.StageRunnerFunc(func(ctx context.Context, p pipeline.Payload, f pipeline.TaskValidator) error {
-		fmt.Println("task: ", "BeforeFetcher", p.GetCurrentHeight())
+		payload := (p).(*payload)
+		fmt.Println("task: ", "BeforeFetcher", payload.currentHeight)
 		return nil
 	})
 	p.AddStageBefore(pipeline.StageFetcher, "BeforeFetcher", beforeFetcherFunc)
@@ -58,14 +59,15 @@ func StartPipeline() error {
 	// Add custom stage after existing one
 	// Demonstrates how to use func as a stage runner without a need to use structs
 	afterValidatorFunc := pipeline.StageRunnerFunc(func(ctx context.Context, p pipeline.Payload, f pipeline.TaskValidator) error {
-		fmt.Println("task: ", "AfterValidator", p.GetCurrentHeight())
+		payload := (p).(*payload)
+		fmt.Println("task: ", "AfterValidator", payload.currentHeight)
 		return nil
 	})
 	p.AddStageAfter(pipeline.StageValidator, "AfterValidator", afterValidatorFunc)
 
 	ctx := context.Background()
 
-	err := p.Start(ctx)
+	err := p.Start(ctx, NewSource(), NewSink())
 	if err != nil {
 		return err
 	}

@@ -2,34 +2,36 @@ package indexing
 
 import (
 	"context"
-	"fmt"
 	"github.com/figment-networks/indexing-engine.git/pipeline"
 )
 
 func NewSource() pipeline.Source {
-	return &source{}
+	return &source{
+		currentHeight: 10,
+		startHeight:   10,
+		endHeight:     11,
+	}
 }
 
 type source struct {
-	startHeight int64
-	endHeight int64
+	startHeight   int64
+	currentHeight int64
+	endHeight     int64
+	err           error
 }
 
-func (s *source) GetStartHeight() int64 {
-	return s.startHeight
+func (s *source) Next(ctx context.Context, p pipeline.Payload) bool {
+	if s.err == nil && s.currentHeight < s.endHeight {
+		s.currentHeight = s.currentHeight + 1
+		return true
+	}
+	return false
 }
 
-func (s *source) GetEndHeight() int64 {
-	return s.endHeight
+func (s *source) Current() int64 {
+	return s.currentHeight
 }
 
-func (s *source) Run(ctx context.Context) error {
-	// Get start and end heights
-	s.startHeight = 10
-	s.endHeight = 12
-
-	fmt.Println("source")
-
-	return nil
+func (s *source) Err() error {
+	return s.err
 }
-

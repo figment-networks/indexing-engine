@@ -15,7 +15,8 @@ func NewAggregatorTask() pipeline.Task {
 type AggregatorTask struct {
 }
 
-func (f *AggregatorTask) Run(ctx context.Context,  payload pipeline.Payload) error {
-	fmt.Println("task: ", reflect.TypeOf(*f).Name(), payload.GetCurrentHeight())
+func (f *AggregatorTask) Run(ctx context.Context,  p pipeline.Payload) error {
+	payload := (p).(*payload)
+	fmt.Println("task: ", reflect.TypeOf(*f).Name(), payload.currentHeight)
 	return nil
 }

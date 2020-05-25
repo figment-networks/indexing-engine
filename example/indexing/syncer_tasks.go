@@ -15,7 +15,8 @@ func NewSyncerTask() pipeline.Task {
 type SyncerTask struct {
 }
 
-func (f *SyncerTask) Run(ctx context.Context,  payload pipeline.Payload) error {
-	fmt.Println("task: ", reflect.TypeOf(*f).Name(), payload.GetCurrentHeight())
+func (f *SyncerTask) Run(ctx context.Context,  p pipeline.Payload) error {
+	payload := (p).(*payload)
+	fmt.Println("task: ", reflect.TypeOf(*f).Name(), payload.currentHeight)
 	return nil
 }

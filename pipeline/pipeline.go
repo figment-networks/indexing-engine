@@ -2,7 +2,6 @@ package pipeline
 
 import (
 	"context"
-	"errors"
 	"github.com/hashicorp/go-multierror"
 	"sync"
 )
@@ -54,8 +53,6 @@ type Options struct {
 
 // Pipeline implements a modular, multi-stage pipeline
 type Pipeline struct {
-	source         Source
-	sink           Sink
 	payloadFactory PayloadFactory
 
 	options *Options
@@ -66,10 +63,8 @@ type Pipeline struct {
 	afterStage  map[StageName][]*stage
 }
 
-func New(source Source, sink Sink, payloadFactor PayloadFactory) *Pipeline {
+func New(payloadFactor PayloadFactory) *Pipeline {
 	return &Pipeline{
-		source:         source,
-		sink:           sink,
 		payloadFactory: payloadFactor,
 		stages:         make(map[StageName]*stage),
 		beforeStage:    make(map[StageName][]*stage),
@@ -133,40 +128,39 @@ func (p *Pipeline) AddStageAfter(existingStageName StageName, name StageName, st
 }
 
 // Start starts the pipeline
-func (p *Pipeline) Start(ctx context.Context) error {
+func (p *Pipeline) Start(ctx context.Context, source Source, sink Sink) error {
 	pCtx, _ := p.setupCtx(ctx)
 
-	// Source is responsible for getting start and end heights
-	// If it fails we cannot proceed with execution of pipeline
-	if err := p.source.Run(pCtx); err != nil {
-		return err
-	}
+	var pipelineErr error
+	var recentPayload Payload
 
-	startHeight, endHeight, err := p.getInterval()
-	if err != nil {
-		return err
-	}
-
-	var stagesErr error
-	for i := *startHeight; i <= *endHeight; i++ {
+	for ok := true; ok; ok = source.Next(ctx, recentPayload) {
 		payload := p.payloadFactory.GetPayload()
 
-		payload.SetCurrentHeight(i)
+		payload.SetCurrentHeight(source.Current())
 
-		stagesErr = p.runStages(pCtx, payload)
-		if stagesErr != nil {
+		pipelineErr = p.runStages(pCtx, payload)
+		if pipelineErr != nil {
 			// We don't want to run pipeline for rest of heights since we don't want to have gaps in records
 			break
 		}
 
+		if err := sink.Consume(pCtx, payload); err != nil {
+			pipelineErr = err
+			// Stop execution when sink errors out
+			break
+		}
+
 		payload.MarkAsProcessed()
+
+		recentPayload = payload
 	}
 
-	if err := p.sink.Run(pCtx); err != nil {
-		return multierror.Append(stagesErr, err)
+	if err := source.Err(); err != nil {
+		pipelineErr = multierror.Append(pipelineErr, err)
 	}
 
-	return stagesErr
+	return pipelineErr
 }
 
 // setupCtx sets up the context
@@ -179,17 +173,6 @@ func (p *Pipeline) setupCtx(ctx context.Context) (context.Context, context.Cance
 	pCtx = context.WithValue(pCtx, CtxStats, statRecorder)
 
 	return pCtx, cancelFunc
-}
-
-// getInterval gets start and end heights from the source
-func (p *Pipeline) getInterval() (*int64, *int64, error) {
-	startHeight := p.source.GetStartHeight()
-	endHeight := p.source.GetEndHeight()
-
-	if startHeight > endHeight {
-		return nil, nil, errors.New("start height has to be smaller than end height")
-	}
-	return &startHeight, &endHeight, nil
 }
 
 // runStages runs all the stages
@@ -214,6 +197,10 @@ func (p *Pipeline) runStages(ctx context.Context, payload Payload) error {
 
 // runSyncingStages runs syncing stages in sequence
 func (p *Pipeline) runSyncingStages(ctx context.Context, payload Payload) error {
+	if err := p.runStage(StageSyncer, ctx, payload); err != nil {
+		return err
+	}
+
 	if err := p.runStage(StageFetcher, ctx, payload); err != nil {
 		return err
 	}
@@ -226,9 +213,6 @@ func (p *Pipeline) runSyncingStages(ctx context.Context, payload Payload) error 
 		return err
 	}
 
-	if err := p.runStage(StageSyncer, ctx, payload); err != nil {
-		return err
-	}
 	return nil
 }
 
