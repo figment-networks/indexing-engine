@@ -7,8 +7,8 @@ import (
 
 	"github.com/golang/mock/gomock"
 
-	"github.com/figment-networks/indexing-engine.git/pipeline"
-	mock "github.com/figment-networks/indexing-engine.git/pipeline/mock"
+	"github.com/figment-networks/indexing-engine/pipeline"
+	mock "github.com/figment-networks/indexing-engine/pipeline/mock"
 )
 
 func TestStage_Running(t *testing.T) {

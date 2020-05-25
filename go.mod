@@ -1,4 +1,4 @@
-module github.com/figment-networks/indexing-engine.git
+module github.com/figment-networks/indexing-engine
 
 go 1.13
 

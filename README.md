@@ -4,15 +4,18 @@
 Indexing engine helps to build indexers using simple to use DSL. It's goal is to provide a logical structure to 
 the process of indexing.
 
-Every indexing pipeline has fixed stages available to hook up to:
+Every indexing pipeline has fixed stages available to hook in to:
 * `Setup stage` (Chore): performs setup tasks
+* `Syncer stage` (Syncing): creates syncable
 * `Fetcher stage` (Syncing): fetches data for indexing
 * `Parser stage` (Syncing): parses and normalizes fetched data to a single structure
 * `Validator stage` (Syncing): validates parsed data 
-* `Syncer stage` (Syncing): saves data to datastore
-* `Sequencer stage` (Indexing): Creates sequences from synced data (syncable)
-* `Aggregator stage` (Indexing): Creates aggregates from synced data (syncable)
+* `Sequencer stage` (Indexing): Creates sequences from fetched or/and parsed data
+* `Aggregator stage` (Indexing): Creates aggregates from fetched or/and parsed data
 * `Cleanup stage` (Chore): Cleans up after execution
+
+Besides that there are 2 additional components: Source and Sink.
+`Source` is responsible for providing height iterator for the pipeline and `Sink` is gathering output data which can be used after the pipeline is done processing.
 
 Below flow-chart depicts all the available stages that come with this package and order in which they are executed.
 
@@ -23,9 +26,9 @@ in order to speed up the indexing process.
 
 ## Installation
 
-To install github.com/figment-networks/indexing-engine.git use:
+To install github.com/figment-networks/indexing-engine use:
 ```shell script
-go get https://github.com/figment-networks/github.com/figment-networks/indexing-engine.git
+go get https://github.com/figment-networks/github.com/figment-networks/indexing-engine
 ```
 
 ## Usage
@@ -68,7 +71,7 @@ p.AddStageBefore(pipeline.StageFetcher, CustomStageName, afterFetcherFunc)
 
 
  ### Retrying
- github.com/figment-networks/indexing-engine.git provides 2 types of retrying mechanisms:
+ github.com/figment-networks/indexing-engine provides 2 types of retrying mechanisms:
  * `RetryingStageRunner` - which is responsible for retrying the entire stage if error occurred
  * `RetryingTask` - which is responsible for retrying individual tasks if it return error
  

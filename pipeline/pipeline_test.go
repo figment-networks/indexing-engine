@@ -3,8 +3,8 @@ package pipeline_test
 import (
 	"context"
 	"github.com/golang/mock/gomock"
-	"github.com/figment-networks/indexing-engine.git/pipeline"
-	mock "github.com/figment-networks/indexing-engine.git/pipeline/mock"
+	"github.com/figment-networks/indexing-engine/pipeline"
+	mock "github.com/figment-networks/indexing-engine/pipeline/mock"
 	"sync"
 	"testing"
 )

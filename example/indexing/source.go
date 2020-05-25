@@ -2,7 +2,7 @@ package indexing
 
 import (
 	"context"
-	"github.com/figment-networks/indexing-engine.git/pipeline"
+	"github.com/figment-networks/indexing-engine/pipeline"
 )
 
 func NewSource() pipeline.Source {

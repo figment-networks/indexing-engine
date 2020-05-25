@@ -1,7 +1,7 @@
 package indexing
 
 import (
-	"github.com/figment-networks/indexing-engine.git/pipeline"
+	"github.com/figment-networks/indexing-engine/pipeline"
 	"sync"
 )
 
