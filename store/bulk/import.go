@@ -1,4 +1,4 @@
-package store
+package bulk
 
 import (
 	"fmt"
