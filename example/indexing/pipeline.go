@@ -6,14 +6,12 @@ import (
 	"github.com/figment-networks/indexing-engine/pipeline"
 )
 
+const (
+	versionsDir = "example/indexing/versions"
+)
+
 func StartPipeline() error {
 	p := pipeline.New(NewPayloadFactory())
-
-	// Set options to control what stages a what indexing tasks to execute
-	p.SetOptions(&pipeline.Options{
-		//StagesWhitelist: []pipeline.StageName{pipeline.StageFetcher},
-		//IndexingTasksWhitelist: []string{"SequencerTask"},
-	})
 
 	// Set fetcher stage
 	// Demonstrates use of retrying mechanism for tasks inside the stage
@@ -51,7 +49,7 @@ func StartPipeline() error {
 	// Demonstrates how to use func as a stage runner without a need to use structs
 	beforeFetcherFunc := pipeline.StageRunnerFunc(func(ctx context.Context, p pipeline.Payload, f pipeline.TaskValidator) error {
 		payload := (p).(*payload)
-		fmt.Println("task: ", "BeforeFetcher", payload.currentHeight)
+		fmt.Println("task: ", "BeforeFetcher", payload.CurrentHeight)
 		return nil
 	})
 	p.AddStageBefore(pipeline.StageFetcher, "BeforeFetcher", beforeFetcherFunc)
@@ -60,16 +58,33 @@ func StartPipeline() error {
 	// Demonstrates how to use func as a stage runner without a need to use structs
 	afterValidatorFunc := pipeline.StageRunnerFunc(func(ctx context.Context, p pipeline.Payload, f pipeline.TaskValidator) error {
 		payload := (p).(*payload)
-		fmt.Println("task: ", "AfterValidator", payload.currentHeight)
+		fmt.Println("task: ", "AfterValidator", payload.CurrentHeight)
 		return nil
 	})
 	p.AddStageAfter(pipeline.StageValidator, "AfterValidator", afterValidatorFunc)
 
 	ctx := context.Background()
 
-	err := p.Start(ctx, NewSource(), NewSink())
+	_, options, err := getOptions()
 	if err != nil {
 		return err
 	}
+
+	if err := p.Start(ctx, NewSource(), NewSink(), options); err != nil {
+		return err
+	}
 	return nil
+}
+
+func getOptions() (*int64, *pipeline.Options, error) {
+	versionReader := pipeline.NewVersionReader(versionsDir)
+
+	versionNumber, taskWhitelist, err := versionReader.All()
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return versionNumber, &pipeline.Options{
+		TaskWhitelist: taskWhitelist,
+	}, nil
 }

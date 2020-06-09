@@ -4,7 +4,10 @@ import (
 	"context"
 	"fmt"
 	"github.com/figment-networks/indexing-engine/pipeline"
-	"reflect"
+)
+
+const (
+	SyncerTaskName = "SyncerExample"
 )
 
 func NewSyncerTask() pipeline.Task {
@@ -15,8 +18,12 @@ func NewSyncerTask() pipeline.Task {
 type SyncerTask struct {
 }
 
-func (f *SyncerTask) Run(ctx context.Context,  p pipeline.Payload) error {
+func (t *SyncerTask) GetName() string {
+	return SyncerTaskName
+}
+
+func (t *SyncerTask) Run(ctx context.Context,  p pipeline.Payload) error {
 	payload := (p).(*payload)
-	fmt.Println("task: ", reflect.TypeOf(*f).Name(), payload.currentHeight)
+	fmt.Println("task: ", t.GetName(), payload.CurrentHeight)
 	return nil
 }

@@ -5,14 +5,11 @@ import "context"
 // PayloadFactory is implemented by objects which know how to create payload for every height
 type PayloadFactory interface {
 	// Gets new payload
-	GetPayload() Payload
+	GetPayload(int64) Payload
 }
 
 // Payload is implemented by values that can be sent through a pipeline.
 type Payload interface {
-	// Set current height to be processed
-	SetCurrentHeight(int64)
-
 	// MarkAsProcessed is invoked by the pipeline when the payload
 	// reaches the end of execution for current height
 	MarkAsProcessed()
@@ -64,21 +61,8 @@ type Stage interface {
 type Task interface {
 	//Run Task
 	Run(context.Context, Payload) error
+
+	// GetName gets name of task
+	GetName() string
 }
 
-// TaskFunc is an adapter to allow the use of plain functions as Task
-type TaskFunc func(context.Context, Payload) error
-
-// Process calls f(ctx, p).
-func (f TaskFunc) Run(ctx context.Context, p Payload) error {
-	return f(ctx, p)
-}
-
-// Logger is implemented by types wanting to hook up for logging
-type Logger interface {
-	Info(interface{}, ...interface{})
-	Debug(interface{}, ...interface{})
-	DebugJSON(interface{}, ...interface{})
-	Warn(interface{}, ...interface{})
-	Err(error, ...interface{})
-}

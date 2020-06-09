@@ -3,7 +3,6 @@ package pipeline
 import (
 	"context"
 	"github.com/hashicorp/go-multierror"
-	"reflect"
 	"strings"
 	"sync"
 )
@@ -46,24 +45,14 @@ func (s *stage) Run(ctx context.Context, payload Payload, options *Options) erro
 
 // canRunTask determines if task can be ran
 func (s *stage) canRunTask(taskName string, options *Options) bool {
-	if s.stageType == StageTypeIndexing && options != nil && len(options.IndexingTasksWhitelist) > 0 {
-		for _, t := range options.IndexingTasksWhitelist {
+	if options != nil && len(options.TaskWhitelist) > 0 {
+		for _, t := range options.TaskWhitelist {
 			if strings.Contains(taskName, t) {
 				return true
 			}
 		}
 		return false
 	}
-
-	if s.stageType == StageTypeIndexing && options != nil && len(options.IndexingTasksBlacklist) > 0 {
-		for _, t := range options.IndexingTasksBlacklist {
-			if strings.Contains(taskName, t) {
-				return false
-			}
-		}
-		return true
-	}
-
 	return true
 }
 
@@ -78,9 +67,9 @@ type syncRunner struct {
 
 // Run runs syncRunner
 func (r syncRunner) Run(ctx context.Context, payload Payload, canRunTask TaskValidator) error {
-	for _, t := range r.tasks {
-		if canRunTask(reflect.TypeOf(t).String()) {
-			err := t.Run(ctx, payload)
+	for _, task := range r.tasks {
+		if canRunTask(task.GetName()) {
+			err := task.Run(ctx, payload)
 			if err != nil {
 				return err
 			}
@@ -104,7 +93,7 @@ func (ar asyncRunner) Run(ctx context.Context, payload Payload, canRunTask TaskV
 	var errs error
 	errCh := make(chan error, len(ar.tasks))
 	for _, task := range ar.tasks {
-		if canRunTask(reflect.TypeOf(task).String()) {
+		if canRunTask(task.GetName()) {
 			wg.Add(1)
 			go func(task Task, ctx context.Context, payload Payload) {
 				if err := task.Run(ctx, payload); err != nil {
@@ -143,19 +132,37 @@ func RetryingStageRunner(sr StageRunner, isTransient func(error) bool, maxRetrie
 	})
 }
 
-// RetryingStageRunner implement retry mechanism for Task
-func RetryingTask(st Task, isTransient func(error) bool, maxRetries int) Task {
-	return TaskFunc(func(ctx context.Context, p Payload) error {
-		var err error
-		for i := 0; i < maxRetries; i++ {
-			if err = st.Run(ctx, p); err != nil {
-				if !isTransient(err) {
-					return err
-				}
-			} else {
-				break
+type retryTask struct {
+	name        string
+	task        Task
+	isTransient func(error) bool
+	maxRetries  int
+}
+
+func (r *retryTask) GetName() string {
+	return r.name
+}
+
+func (r *retryTask) Run(ctx context.Context, p Payload) error {
+	var err error
+	for i := 0; i < r.maxRetries; i++ {
+		if err = r.task.Run(ctx, p); err != nil {
+			if !r.isTransient(err) {
+				return err
 			}
+		} else {
+			break
 		}
-		return err
-	})
+	}
+	return err
+}
+
+// RetryingTask implement retry mechanism for Task
+func RetryingTask(st Task, isTransient func(error) bool, maxRetries int) Task {
+	return &retryTask{
+		name:        st.GetName(),
+		task:        st,
+		isTransient: isTransient,
+		maxRetries:  maxRetries,
+	}
 }

@@ -22,20 +22,22 @@ func NewPayloadFactory() *payloadFactory {
 
 type payloadFactory struct {}
 
-func (pf *payloadFactory) GetPayload() pipeline.Payload {
-	return payloadPool.Get().(*payload)
+func (pf *payloadFactory) GetPayload(currentHeight int64) pipeline.Payload {
+	payload := payloadPool.Get().(*payload)
+	payload.CurrentHeight = currentHeight
+	return payload
 }
 
 type payload struct {
-	currentHeight int64
+	CurrentHeight int64
 }
 
 func (p *payload) SetCurrentHeight(height int64) {
-	p.currentHeight = height
+	p.CurrentHeight = height
 }
 
 func (p *payload) GetCurrentHeight() int64 {
-	return p.currentHeight
+	return p.CurrentHeight
 }
 
 func (p *payload) MarkAsProcessed() {

@@ -4,7 +4,10 @@ import (
 	"context"
 	"fmt"
 	"github.com/figment-networks/indexing-engine/pipeline"
-	"reflect"
+)
+
+const (
+	AggregatorTaskName = "AggregatorExample"
 )
 
 func NewAggregatorTask() pipeline.Task {
@@ -15,8 +18,12 @@ func NewAggregatorTask() pipeline.Task {
 type AggregatorTask struct {
 }
 
-func (f *AggregatorTask) Run(ctx context.Context,  p pipeline.Payload) error {
+func (t *AggregatorTask) GetName() string {
+	return AggregatorTaskName
+}
+
+func (t *AggregatorTask) Run(ctx context.Context,  p pipeline.Payload) error {
 	payload := (p).(*payload)
-	fmt.Println("task: ", reflect.TypeOf(*f).Name(), payload.currentHeight)
+	fmt.Println("task: ", t.GetName(), payload.CurrentHeight)
 	return nil
 }

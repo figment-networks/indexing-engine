@@ -2,6 +2,7 @@ package pipeline
 
 import (
 	"context"
+	"errors"
 	"github.com/hashicorp/go-multierror"
 	"sync"
 )
@@ -35,27 +36,21 @@ const (
 	StageCleanup StageName = "stage_cleanup"
 )
 
+var (
+	ErrVersionsDirNotSet = errors.New("versions directory not set")
+)
+
 type StageName string
 
 type Options struct {
-	// StagesWhitelist holds name of stages that will be executed
-	StagesWhitelist []StageName
-
-	// StagesBlacklist holds name of stages that will NOT be executed
-	StagesBlacklist []StageName
-
-	// IndexingTasksWhitelist holds name of indexing tasks which will be executed
-	IndexingTasksWhitelist []string
-
-	// IndexingTasksBlacklist holds name of indexing tasks which will NOT be executed
-	IndexingTasksBlacklist []string
+	// TaskWhitelist holds name of indexing tasks which will be executed
+	TaskWhitelist VersionTasks
 }
 
 // Pipeline implements a modular, multi-stage pipeline
 type Pipeline struct {
 	payloadFactory PayloadFactory
-
-	options *Options
+	options        *Options
 
 	stages map[StageName]*stage
 
@@ -66,9 +61,10 @@ type Pipeline struct {
 func New(payloadFactor PayloadFactory) *Pipeline {
 	return &Pipeline{
 		payloadFactory: payloadFactor,
-		stages:         make(map[StageName]*stage),
-		beforeStage:    make(map[StageName][]*stage),
-		afterStage:     make(map[StageName][]*stage),
+
+		stages:      make(map[StageName]*stage),
+		beforeStage: make(map[StageName][]*stage),
+		afterStage:  make(map[StageName][]*stage),
 	}
 }
 
@@ -128,16 +124,15 @@ func (p *Pipeline) AddStageAfter(existingStageName StageName, name StageName, st
 }
 
 // Start starts the pipeline
-func (p *Pipeline) Start(ctx context.Context, source Source, sink Sink) error {
+func (p *Pipeline) Start(ctx context.Context, source Source, sink Sink, options *Options) error {
 	pCtx, _ := p.setupCtx(ctx)
+
+	p.options = options
 
 	var pipelineErr error
 	var recentPayload Payload
-
 	for ok := true; ok; ok = source.Next(ctx, recentPayload) {
-		payload := p.payloadFactory.GetPayload()
-
-		payload.SetCurrentHeight(source.Current())
+		payload := p.payloadFactory.GetPayload(source.Current())
 
 		pipelineErr = p.runStages(pCtx, payload)
 		if pipelineErr != nil {
@@ -282,24 +277,5 @@ func (p *Pipeline) canRunStage(stageName StageName) bool {
 	if !ok {
 		return false
 	}
-
-	if p.options != nil && len(p.options.StagesWhitelist) > 0 {
-		for _, s := range p.options.StagesWhitelist {
-			if s == stageName {
-				return true
-			}
-		}
-		return false
-	}
-
-	if p.options != nil && len(p.options.StagesBlacklist) > 0 {
-		for _, s := range p.options.StagesBlacklist {
-			if s == stageName {
-				return false
-			}
-		}
-		return true
-	}
-
 	return true
 }

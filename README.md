@@ -50,7 +50,7 @@ This package provides 2 types of StageRunners:
 If you want to use your own method of running task inside of stage, you can easily
 create your own implementation of StageRunner and pass it in to `p.Set[StageName]Stage`.
 
-## Adding custom stages
+### Adding custom stages
 If you want to perform some action on but provided stages are not good logic fit for it, you can always add
 custom stages BEFORE or AFTER existing ones. In order to do that you can use:
 * `AddStageBefore` - adds stage before provided existing stage
@@ -69,6 +69,27 @@ afterFetcherFunc := pipeline.StageRunnerFunc(func(ctx context.Context, p pipelin
 p.AddStageBefore(pipeline.StageFetcher, CustomStageName, afterFetcherFunc)
 ```
 
+### Using versions
+Indexing engine provides you with option to use JSON version files for loading only tasks that you care about.
+Simply create a directory and place a JSON file in there with array of strings representing task names
+```json
+[
+  "SyncerExample",
+  "FetcherExample",
+  "ParserExample",
+  "ValidatorExample",
+  "AggregatorExample",
+  "SequencerExample"
+]
+```
+ Then you can use `VersionReader` to to read those version files and provide them as an option to pipeline Start method.
+ ```go
+_, taskWhitelist, _ := versionReader.All()
+
+p.Start(ctx, NewSource(), NewSink(), &pipeline.Options{
+    TaskWhitelist: taskWhitelist,
+})
+``` 
 
  ### Retrying
  github.com/figment-networks/indexing-engine provides 2 types of retrying mechanisms:

@@ -4,7 +4,10 @@ import (
 	"context"
 	"fmt"
 	"github.com/figment-networks/indexing-engine/pipeline"
-	"reflect"
+)
+
+const (
+	ValidatorTaskName = "ValidatorExample"
 )
 
 func NewValidatorTask() pipeline.Task {
@@ -15,9 +18,13 @@ func NewValidatorTask() pipeline.Task {
 type ValidatorTask struct {
 }
 
-func (f *ValidatorTask) Run(ctx context.Context,  p pipeline.Payload) error {
+func (t *ValidatorTask) GetName() string {
+	return ValidatorTaskName
+}
+
+func (t *ValidatorTask) Run(ctx context.Context,  p pipeline.Payload) error {
 	payload := (p).(*payload)
-	fmt.Println("task: ", reflect.TypeOf(*f).Name(), payload.currentHeight)
+	fmt.Println("task: ", t.GetName(), payload.CurrentHeight)
 	return nil
 }
 

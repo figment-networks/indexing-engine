@@ -4,7 +4,10 @@ import (
 	"context"
 	"fmt"
 	"github.com/figment-networks/indexing-engine/pipeline"
-	"reflect"
+)
+
+const (
+	ParserTaskName = "ParserExample"
 )
 
 func NewParserTask() pipeline.Task {
@@ -15,8 +18,12 @@ func NewParserTask() pipeline.Task {
 type ParserTask struct {
 }
 
-func (f *ParserTask) Run(ctx context.Context,  p pipeline.Payload) error {
+func (t *ParserTask) GetName() string {
+	return ParserTaskName
+}
+
+func (t *ParserTask) Run(ctx context.Context,  p pipeline.Payload) error {
 	payload := (p).(*payload)
-	fmt.Println("task: ", reflect.TypeOf(*f).Name(), payload.currentHeight)
+	fmt.Println("task: ", t.GetName(), payload.CurrentHeight)
 	return nil
 }
