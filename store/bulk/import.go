@@ -23,6 +23,11 @@ func Import(db *gorm.DB, query string, n int, rowfunc RowFunc) error {
 		panic(fmt.Errorf("query %q does not contain @values reference", query))
 	}
 
+	// No records to process, skipping
+	if n < 1 {
+		return nil
+	}
+
 	var placeholders string
 	var vals []interface{}
 
