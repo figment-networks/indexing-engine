@@ -21,7 +21,7 @@ func TestStage_Running(t *testing.T) {
 		stageRunnerMock := mock.NewMockStageRunner(ctrl)
 		stageRunnerMock.EXPECT().Run(ctx, payloadMock, gomock.Any()).Return(nil)
 
-		s := pipeline.NewStage("test", stageRunnerMock, pipeline.StageTypeCustom)
+		s := pipeline.NewStage("test", stageRunnerMock)
 
 		err := s.Run(ctx, payloadMock, nil)
 		if err != nil {
@@ -38,7 +38,7 @@ func TestStage_Running(t *testing.T) {
 		stageRunnerMock := mock.NewMockStageRunner(ctrl)
 		stageRunnerMock.EXPECT().Run(ctx, payloadMock, gomock.Any()).Return(errors.New("test error"))
 
-		s := pipeline.NewStage("test", stageRunnerMock, pipeline.StageTypeCustom)
+		s := pipeline.NewStage("test", stageRunnerMock)
 
 		err := s.Run(ctx, payloadMock, nil)
 		if err == nil {
@@ -56,6 +56,9 @@ func TestStage_SyncRunner(t *testing.T) {
 
 		task1 := mock.NewMockTask(ctrl)
 		task2 := mock.NewMockTask(ctrl)
+
+		task1.EXPECT().GetName().Return("task1")
+		task2.EXPECT().GetName().Return("task2")
 
 		gomock.InOrder(
 			task1.EXPECT().Run(ctx, payloadMock).Return(nil),
@@ -80,6 +83,8 @@ func TestStage_SyncRunner(t *testing.T) {
 		task1 := mock.NewMockTask(ctrl)
 		task2 := mock.NewMockTask(ctrl)
 
+		task1.EXPECT().GetName().Return("task1")
+
 		task1.EXPECT().Run(ctx, payloadMock).Return(errors.New("test error"))
 		task2.EXPECT().Run(ctx, payloadMock).Return(nil).Times(0)
 
@@ -100,6 +105,9 @@ func TestStage_SyncRunner(t *testing.T) {
 
 		task1 := mock.NewMockTask(ctrl)
 		task2 := mock.NewMockTask(ctrl)
+
+		task1.EXPECT().GetName().Return("task1")
+		task2.EXPECT().GetName().Return("task2")
 
 		task1.EXPECT().Run(ctx, payloadMock).Return(nil)
 		task2.EXPECT().Run(ctx, payloadMock).Return(errors.New("test error"))
@@ -124,6 +132,9 @@ func TestStage_AsyncRunner(t *testing.T) {
 		task1 := mock.NewMockTask(ctrl)
 		task2 := mock.NewMockTask(ctrl)
 
+		task1.EXPECT().GetName().Return("task1")
+		task2.EXPECT().GetName().Return("task2")
+
 		task1.EXPECT().Run(ctx, payloadMock).Return(nil)
 		task2.EXPECT().Run(ctx, payloadMock).Return(nil)
 
@@ -144,6 +155,9 @@ func TestStage_AsyncRunner(t *testing.T) {
 
 		task1 := mock.NewMockTask(ctrl)
 		task2 := mock.NewMockTask(ctrl)
+
+		task1.EXPECT().GetName().Return("task1")
+		task2.EXPECT().GetName().Return("task2")
 
 		task1.EXPECT().Run(ctx, payloadMock).Return(errors.New("test error"))
 		task2.EXPECT().Run(ctx, payloadMock).Return(nil)
@@ -166,6 +180,9 @@ func TestStage_AsyncRunner(t *testing.T) {
 		task1 := mock.NewMockTask(ctrl)
 		task2 := mock.NewMockTask(ctrl)
 
+		task1.EXPECT().GetName().Return("task1")
+		task2.EXPECT().GetName().Return("task2")
+
 		task1.EXPECT().Run(ctx, payloadMock).Return(nil)
 		task2.EXPECT().Run(ctx, payloadMock).Return(errors.New("test error"))
 
@@ -186,6 +203,9 @@ func TestStage_AsyncRunner(t *testing.T) {
 
 		task1 := mock.NewMockTask(ctrl)
 		task2 := mock.NewMockTask(ctrl)
+
+		task1.EXPECT().GetName().Return("task1")
+		task2.EXPECT().GetName().Return("task2")
 
 		task1.EXPECT().Run(ctx, payloadMock).Return(errors.New("test error"))
 		task2.EXPECT().Run(ctx, payloadMock).Return(errors.New("test error"))

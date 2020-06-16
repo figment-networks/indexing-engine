@@ -15,7 +15,8 @@ func StartPipeline() error {
 
 	// Set fetcher stage
 	// Demonstrates use of retrying mechanism for tasks inside the stage
-	p.SetFetcherStage(
+	p.SetStage(
+		pipeline.StageFetcher,
 		pipeline.AsyncRunner(
 			pipeline.RetryingTask(NewFetcherTask(), func(err error) bool {
 				// Make error always transient for simplicity
@@ -25,14 +26,15 @@ func StartPipeline() error {
 	)
 
 	// Set parser stage
-	p.SetParserStage(pipeline.SyncRunner(NewParserTask()))
+	p.SetStage(pipeline.StageParser, pipeline.SyncRunner(NewParserTask()))
 
 	// Set validator stage
-	p.SetValidatorStage(pipeline.SyncRunner(NewValidatorTask()))
+	p.SetStage(pipeline.StageValidator, pipeline.SyncRunner(NewValidatorTask()))
 
 	// Set syncer stage
 	// Demonstrates use of retrying mechanism for entire stage
-	p.SetSyncerStage(
+	p.SetStage(
+		pipeline.StageSyncer,
 		pipeline.RetryingStageRunner(pipeline.SyncRunner(NewSyncerTask()), func(err error) bool {
 			// Make error always transient for simplicity
 			return true
@@ -40,10 +42,10 @@ func StartPipeline() error {
 	)
 
 	// Set sequencer stage
-	p.SetSequencerStage(pipeline.AsyncRunner(NewSequencerTask()))
+	p.SetStage(pipeline.StageSequencer, pipeline.AsyncRunner(NewSequencerTask()))
 
 	// Set aggregator stage
-	p.SetAggregatorStage(pipeline.AsyncRunner(NewAggregatorTask()))
+	p.SetStage(pipeline.StageAggregator, pipeline.AsyncRunner(NewAggregatorTask()))
 
 	// Add custom stage before existing one
 	// Demonstrates how to use func as a stage runner without a need to use structs
@@ -65,26 +67,9 @@ func StartPipeline() error {
 
 	ctx := context.Background()
 
-	_, options, err := getOptions()
-	if err != nil {
-		return err
-	}
-
+	options := &pipeline.Options{}
 	if err := p.Start(ctx, NewSource(), NewSink(), options); err != nil {
 		return err
 	}
 	return nil
-}
-
-func getOptions() (*int64, *pipeline.Options, error) {
-	versionReader := pipeline.NewVersionReader(versionsDir)
-
-	versionNumber, taskWhitelist, err := versionReader.All()
-	if err != nil {
-		return nil, nil, err
-	}
-
-	return versionNumber, &pipeline.Options{
-		TaskWhitelist: taskWhitelist,
-	}, nil
 }

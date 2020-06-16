@@ -35,17 +35,17 @@ func (m *MockPayloadFactory) EXPECT() *MockPayloadFactoryMockRecorder {
 }
 
 // GetPayload mocks base method
-func (m *MockPayloadFactory) GetPayload() pipeline.Payload {
+func (m *MockPayloadFactory) GetPayload(arg0 int64) pipeline.Payload {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetPayload")
+	ret := m.ctrl.Call(m, "GetPayload", arg0)
 	ret0, _ := ret[0].(pipeline.Payload)
 	return ret0
 }
 
 // GetPayload indicates an expected call of GetPayload
-func (mr *MockPayloadFactoryMockRecorder) GetPayload() *gomock.Call {
+func (mr *MockPayloadFactoryMockRecorder) GetPayload(arg0 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetPayload", reflect.TypeOf((*MockPayloadFactory)(nil).GetPayload))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetPayload", reflect.TypeOf((*MockPayloadFactory)(nil).GetPayload), arg0)
 }
 
 // MockPayload is a mock of Payload interface
@@ -81,18 +81,6 @@ func (m *MockPayload) MarkAsProcessed() {
 func (mr *MockPayloadMockRecorder) MarkAsProcessed() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MarkAsProcessed", reflect.TypeOf((*MockPayload)(nil).MarkAsProcessed))
-}
-
-// SetCurrentHeight mocks base method
-func (m *MockPayload) SetCurrentHeight(arg0 int64) {
-	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "SetCurrentHeight", arg0)
-}
-
-// SetCurrentHeight indicates an expected call of SetCurrentHeight
-func (mr *MockPayloadMockRecorder) SetCurrentHeight(arg0 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetCurrentHeight", reflect.TypeOf((*MockPayload)(nil).SetCurrentHeight), arg0)
 }
 
 // MockSource is a mock of Source interface
@@ -292,6 +280,20 @@ func NewMockTask(ctrl *gomock.Controller) *MockTask {
 // EXPECT returns an object that allows the caller to indicate expected use
 func (m *MockTask) EXPECT() *MockTaskMockRecorder {
 	return m.recorder
+}
+
+// GetName mocks base method
+func (m *MockTask) GetName() string {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetName")
+	ret0, _ := ret[0].(string)
+	return ret0
+}
+
+// GetName indicates an expected call of GetName
+func (mr *MockTaskMockRecorder) GetName() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetName", reflect.TypeOf((*MockTask)(nil).GetName))
 }
 
 // Run mocks base method

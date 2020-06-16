@@ -11,29 +11,16 @@ var (
 	_ Stage = (*stage)(nil)
 )
 
-func NewStage(name StageName, runner StageRunner, stageType StageType) *stage {
+func NewStage(name StageName, runner StageRunner) *stage {
 	return &stage{
 		Name:      name,
 		runner:    runner,
-		stageType: stageType,
 	}
 }
-
-type StageType int64
-
-const (
-	StageTypeChore StageType = iota
-	StageTypeSyncing
-	StageTypeIndexing
-
-	// StageTypeCustom it is a stage added dynamically by the user
-	StageTypeCustom
-)
 
 type stage struct {
 	Name      StageName
 	runner    StageRunner
-	stageType StageType
 }
 
 // Run runs the stage runner assigned to stage
@@ -47,7 +34,7 @@ func (s *stage) Run(ctx context.Context, payload Payload, options *Options) erro
 func (s *stage) canRunTask(taskName string, options *Options) bool {
 	if options != nil && len(options.TaskWhitelist) > 0 {
 		for _, t := range options.TaskWhitelist {
-			if strings.Contains(taskName, t) {
+			if strings.Contains(taskName, string(t)) {
 				return true
 			}
 		}
@@ -132,6 +119,7 @@ func RetryingStageRunner(sr StageRunner, isTransient func(error) bool, maxRetrie
 	})
 }
 
+// retryTask is a task with built-in retry mechanism
 type retryTask struct {
 	name        string
 	task        Task
@@ -139,10 +127,12 @@ type retryTask struct {
 	maxRetries  int
 }
 
+// GetName get the name of retry task. It is the same as the original task name
 func (r *retryTask) GetName() string {
 	return r.name
 }
 
+// Run runs retry task
 func (r *retryTask) Run(ctx context.Context, p Payload) error {
 	var err error
 	for i := 0; i < r.maxRetries; i++ {

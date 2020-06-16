@@ -2,15 +2,15 @@ package pipeline
 
 import "context"
 
-// PayloadFactory is implemented by objects which know how to create payload for every height
+// PayloadFactory is implemented by objects which know how to create payloadMock for every height
 type PayloadFactory interface {
-	// Gets new payload
+	// Gets new payloadMock
 	GetPayload(int64) Payload
 }
 
 // Payload is implemented by values that can be sent through a pipeline.
 type Payload interface {
-	// MarkAsProcessed is invoked by the pipeline when the payload
+	// MarkAsProcessed is invoked by the pipeline when the payloadMock
 	// reaches the end of execution for current height
 	MarkAsProcessed()
 }
@@ -30,7 +30,7 @@ type Source interface {
 
 // Sink is executed as a last stage in the pipeline
 type Sink interface {
-	// Consume consumes payload
+	// Consume consumes payloadMock
 	Consume(context.Context, Payload) error
 }
 
@@ -66,3 +66,11 @@ type Task interface {
 	GetName() string
 }
 
+// Logger is implemented by types that want to hook up to logging mechanism in engine
+type Logger interface {
+	// Info logs info message
+	Info(string)
+
+	// Debug logs debug message
+	Debug(string)
+}

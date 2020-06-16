@@ -5,14 +5,15 @@ Indexing engine helps to build indexers using simple to use DSL. It's goal is to
 the process of indexing.
 
 Every indexing pipeline has fixed stages available to hook in to:
-* `Setup stage` (Chore): performs setup tasks
-* `Syncer stage` (Syncing): creates syncable
-* `Fetcher stage` (Syncing): fetches data for indexing
-* `Parser stage` (Syncing): parses and normalizes fetched data to a single structure
-* `Validator stage` (Syncing): validates parsed data 
-* `Sequencer stage` (Indexing): Creates sequences from fetched or/and parsed data
-* `Aggregator stage` (Indexing): Creates aggregates from fetched or/and parsed data
-* `Cleanup stage` (Chore): Cleans up after execution
+* `Setup stage`: performs setup tasks
+* `Syncer stage`: creates syncable
+* `Fetcher stage`: fetches data for indexing
+* `Parser stage`: parses and normalizes fetched data to a single structure
+* `Validator stage`: validates parsed data 
+* `Sequencer stage`: Creates sequences from fetched or/and parsed data
+* `Aggregator stage`: Creates aggregates from fetched or/and parsed data
+* `Persistor stage`: Saves data to data store
+* `Cleanup stage`: Cleans up after execution
 
 Besides that there are 2 additional components: Source and Sink.
 `Source` is responsible for providing height iterator for the pipeline and `Sink` is gathering output data which can be used after the pipeline is done processing.
@@ -36,12 +37,13 @@ go get https://github.com/figment-networks/github.com/figment-networks/indexing-
 ### Setting up stages
 In order to set a specific stage you can use:
 ```shell script
-p.Set[StageName]Stage(
+p.SetStage(
+  [Name of the stage],
   pipeline.SyncRunner(NewTask()),
 )
 ```
 
-As a parameter to `p.Set[StageName]Stage` functions you pass in StageRunner instance.
+As a parameter to `p.SetStage` function you pass in stage name and StageRunner instance.
 StageRunner is responsible for running individual tasks inside of the stage.
 This package provides 2 types of StageRunners:
 1. `SyncRunner` - executes tasks one by one
@@ -49,6 +51,22 @@ This package provides 2 types of StageRunners:
 
 If you want to use your own method of running task inside of stage, you can easily
 create your own implementation of StageRunner and pass it in to `p.Set[StageName]Stage`.
+
+### Starting pipeline
+Once stages are setup, we can run our pipeline
+```go
+options := &pipeline.Options{}
+if err := p.Start(ctx, NewSource(), NewSink(), options); err != nil {
+    return err
+}
+```
+This will execute all the tasks for every iteration of all the items in the source created with `NewSource()`
+If you want to run one-off iteration of pipeline for specific height you can use `Run()`
+```go
+height := 100
+payload, err := p.Run(ctx, height, options)
+```
+It will return a payload collected for that one iteration of the source.
 
 ### Adding custom stages
 If you want to perform some action on but provided stages are not good logic fit for it, you can always add
@@ -69,28 +87,6 @@ afterFetcherFunc := pipeline.StageRunnerFunc(func(ctx context.Context, p pipelin
 p.AddStageBefore(pipeline.StageFetcher, CustomStageName, afterFetcherFunc)
 ```
 
-### Using versions
-Indexing engine provides you with option to use JSON version files for loading only tasks that you care about.
-Simply create a directory and place a JSON file in there with array of strings representing task names
-```json
-[
-  "SyncerExample",
-  "FetcherExample",
-  "ParserExample",
-  "ValidatorExample",
-  "AggregatorExample",
-  "SequencerExample"
-]
-```
- Then you can use `VersionReader` to to read those version files and provide them as an option to pipeline Start method.
- ```go
-_, taskWhitelist, _ := versionReader.All()
-
-p.Start(ctx, NewSource(), NewSink(), &pipeline.Options{
-    TaskWhitelist: taskWhitelist,
-})
-``` 
-
  ### Retrying
  github.com/figment-networks/indexing-engine provides 2 types of retrying mechanisms:
  * `RetryingStageRunner` - which is responsible for retrying the entire stage if error occurred
@@ -110,17 +106,15 @@ p.SetFetcherStage(
 ``` 
 
 ### Selective execution
-Indexing engine provides you with options to run stages and individual indexing tasks selectively.
-You have 4 options you can use for this purpose:
-* `StagesWhitelist` - list of stages to execute
+Indexing engine provides you with options to run stages and individual tasks selectively.
+You have 2 options you can use for this purpose:
 * `StagesBlacklist` - list of stages to NOT execute
-* `IndexingTasksWhitelist` - list of indexing tasks to execute 
-* `IndexingTasksBlacklist` - list of indexing tasks to NOT execute
+* `TasksWhitelist` - list of indexing tasks to execute 
 
 In order to use above options you have to use `setOptions` method of pipeline like so:
 ```go
 p.SetOptions(&pipeline.Options{
-    IndexingTasksWhitelist: []string{"SequencerTask"},
+    TasksWhitelist: []string{"SequencerTask"},
 })
 ```
 Above example would run only `SequencerTask` during indexing process. It is useful if you want to reindex the data but you only care about specific set of data.
@@ -132,5 +126,5 @@ go run example/main.go
 ```
 
 ## To-Dos:
-* Collects stats for evert stage and every task
+* Collect stats for every stage and every task
 * Add context cancellation
