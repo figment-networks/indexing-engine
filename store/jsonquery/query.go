@@ -3,6 +3,7 @@ package jsonquery
 import (
 	"database/sql"
 	"fmt"
+	"regexp"
 
 	"github.com/jinzhu/gorm"
 )
@@ -13,9 +14,20 @@ const (
 )
 
 var (
+	reObject = regexp.MustCompile(`(?m){{(\s+)?object(\s+)?}}((.|\n)+){{(\s+)?end_object(\s+)?}}`)
+	reArray  = regexp.MustCompile(`(?m){{(\s+)?array(\s+)?}}((.|\n)+){{(\s+)?end_array(\s+)?}}`)
+
+	sqlExpandObject = fmt.Sprintf("("+sqlObject+")", "$3")
+	sqlExpandArray  = fmt.Sprintf("("+sqlArray+")", "$3")
+
 	defaultObject = []byte("{}")
 	defaultArray  = []byte("[]")
 )
+
+// Prepare returns a query with expanded array/object blocks
+func Prepare(query string) string {
+	return expandArray(expandObject(query))
+}
 
 // Object returns an object result or a nil if nothing is found
 func Object(db *gorm.DB, query string, values ...interface{}) ([]byte, error) {
@@ -70,4 +82,20 @@ func scanBytes(rows *sql.Rows, err error) ([]byte, error) {
 	}
 
 	return data, nil
+}
+
+func expandObject(input string) string {
+	if reObject.MatchString(input) {
+		input = reObject.ReplaceAllString(input, sqlExpandObject)
+		return expandObject(input)
+	}
+	return input
+}
+
+func expandArray(input string) string {
+	if reArray.MatchString(input) {
+		input = reArray.ReplaceAllString(input, sqlExpandArray)
+		return expandArray(input)
+	}
+	return input
 }
