@@ -205,59 +205,6 @@ func (p *Pipeline) runStages(ctx context.Context, payload Payload) error {
 	return nil
 }
 
-// runSyncingStages runs syncing stages in sequence
-func (p *Pipeline) runSyncingStages(ctx context.Context, payload Payload) error {
-	if err := p.runStage(StageSyncer, ctx, payload); err != nil {
-		return err
-	}
-
-	if err := p.runStage(StageFetcher, ctx, payload); err != nil {
-		return err
-	}
-
-	if err := p.runStage(StageParser, ctx, payload); err != nil {
-		return err
-	}
-
-	if err := p.runStage(StageValidator, ctx, payload); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-// runIndexingStages runs indexing stages concurrently
-func (p *Pipeline) runIndexingStages(ctx context.Context, payload Payload) error {
-	var errs error
-	var wg sync.WaitGroup
-	errCh := make(chan error, 2)
-	wg.Add(2)
-
-	go func() {
-		if err := p.runStage(StageSequencer, ctx, payload); err != nil {
-			errCh <- err
-		}
-		wg.Done()
-	}()
-
-	go func() {
-		if err := p.runStage(StageAggregator, ctx, payload); err != nil {
-			errCh <- err
-		}
-		wg.Done()
-	}()
-
-	go func() {
-		wg.Wait()
-		close(errCh)
-	}()
-
-	for err := range errCh {
-		errs = multierror.Append(errs, err)
-	}
-	return errs
-}
-
 // runStagesConcurrently runs indexing stages concurrently
 func (p *Pipeline) runStagesConcurrently(ctx context.Context, payload Payload, stages []StageName) error {
 	stagesCount := len(stages)

@@ -2,14 +2,31 @@ package pipeline_test
 
 import (
 	"context"
+	"errors"
 	"github.com/figment-networks/indexing-engine/pipeline"
 	mock "github.com/figment-networks/indexing-engine/pipeline/mock"
 	"github.com/golang/mock/gomock"
+	"math/rand"
 	"testing"
+	"time"
 )
 
 var (
 	_ pipeline.Source = (*sourceMock)(nil)
+)
+
+var (
+	allStages = [...]pipeline.StageName{
+		pipeline.StageSetup,
+		pipeline.StageSyncer,
+		pipeline.StageFetcher,
+		pipeline.StageParser,
+		pipeline.StageValidator,
+		pipeline.StageSequencer,
+		pipeline.StageAggregator,
+		pipeline.StagePersistor,
+		pipeline.StageCleanup,
+	}
 )
 
 type payloadMock struct{}
@@ -98,6 +115,269 @@ func TestPipeline_SetStages(t *testing.T) {
 		options := &pipeline.Options{}
 
 		if err := p.Start(ctx, &sourceMock{1, 2, 1}, sinkMock, options); err != nil {
+			t.Errorf("should not return error")
+		}
+	})
+}
+
+func TestPipeline_Start(t *testing.T) {
+	stageErr := errors.New("err")
+
+	t.Run("pipeline returns error if syncing stage errors", func(t *testing.T) {
+		for _, stageWithErr := range [...]pipeline.StageName{
+			pipeline.StageSetup,
+			pipeline.StageSyncer,
+			pipeline.StageFetcher,
+			pipeline.StageParser,
+			pipeline.StageValidator,
+			pipeline.StagePersistor,
+			pipeline.StageCleanup,
+		} {
+
+			ctrl, ctx := gomock.WithContext(context.Background(), t)
+			defer ctrl.Finish()
+
+			payloadFactoryMock := mock.NewMockPayloadFactory(ctrl)
+			payloadFactoryMock.EXPECT().GetPayload(gomock.Any()).Return(&payloadMock{}).Times(1)
+
+			p := pipeline.New(payloadFactoryMock)
+
+			shouldRun := true
+			for _, stage := range allStages {
+				var returnVal error
+				mockTask := mock.NewMockTask(ctrl)
+
+				if !shouldRun {
+					mockTask.EXPECT().GetName().Return("mockTask").Times(0)
+					mockTask.EXPECT().Run(gomock.Any(), gomock.Any()).Return(nil).Times(0)
+					p.SetStage(stage, pipeline.SyncRunner(mockTask))
+					continue
+				}
+
+				if stage == stageWithErr {
+					returnVal = stageErr
+					shouldRun = false
+				}
+
+				mockTask.EXPECT().GetName().Return("mockTask").Times(1)
+				mockTask.EXPECT().Run(gomock.Any(), gomock.Any()).Return(returnVal).Times(1)
+				p.SetStage(stage, pipeline.SyncRunner(mockTask))
+			}
+
+			sinkMock := mock.NewMockSink(ctrl)
+			sinkMock.EXPECT().Consume(gomock.Any(), gomock.Any()).Return(nil).Times(0)
+
+			options := &pipeline.Options{}
+
+			if err := p.Start(ctx, &sourceMock{1, 2, 1}, sinkMock, options); err != stageErr {
+				t.Errorf("expected error")
+			}
+		}
+	})
+
+	t.Run("pipeline returns error if async stage errors", func(t *testing.T) {
+		ctrl, ctx := gomock.WithContext(context.Background(), t)
+		defer ctrl.Finish()
+
+		payloadFactoryMock := mock.NewMockPayloadFactory(ctrl)
+		payloadFactoryMock.EXPECT().GetPayload(gomock.Any()).Return(&payloadMock{}).Times(1)
+
+		p := pipeline.New(payloadFactoryMock)
+
+		aggregatorTask := mock.NewMockTask(ctrl)
+		aggregatorTask.EXPECT().GetName().Return("aggregatorTask").Times(1)
+		aggregatorTask.EXPECT().Run(gomock.Any(), gomock.Any()).Return(stageErr).Times(1)
+		p.SetStage(pipeline.StageAggregator, pipeline.SyncRunner(aggregatorTask))
+
+		sequencerTask := mock.NewMockTask(ctrl)
+		sequencerTask.EXPECT().GetName().Return("sequencerTask").Times(1)
+		sequencerTask.EXPECT().Run(gomock.Any(), gomock.Any()).Return(nil).Times(1)
+		p.SetStage(pipeline.StageSequencer, pipeline.SyncRunner(sequencerTask))
+
+		cleanupTask := mock.NewMockTask(ctrl)
+		cleanupTask.EXPECT().GetName().Return("cleanupTask").Times(0)
+		cleanupTask.EXPECT().Run(gomock.Any(), gomock.Any()).Return(nil).Times(0)
+		p.SetStage(pipeline.StageCleanup, pipeline.SyncRunner(cleanupTask))
+
+		sinkMock := mock.NewMockSink(ctrl)
+		sinkMock.EXPECT().Consume(gomock.Any(), gomock.Any()).Return(nil).Times(0)
+
+		options := &pipeline.Options{}
+
+		if err := p.Start(ctx, &sourceMock{1, 2, 1}, sinkMock, options); err == nil {
+			t.Errorf("expected error")
+		}
+	})
+}
+
+func TestPipeline_AddStageBefore(t *testing.T) {
+	t.Run("new stage is executed before given stage", func(t *testing.T) {
+		ctrl, ctx := gomock.WithContext(context.Background(), t)
+		defer ctrl.Finish()
+
+		payloadFactoryMock := mock.NewMockPayloadFactory(ctrl)
+		payloadFactoryMock.EXPECT().GetPayload(gomock.Any()).Return(&payloadMock{}).Times(1)
+
+		p := pipeline.New(payloadFactoryMock)
+
+		stages := []struct {
+			name         pipeline.StageName
+			existingName pipeline.StageName
+		}{
+			{"beforeSetup", pipeline.StageSetup},
+			{"beforeFetcher", pipeline.StageFetcher},
+			{"beforeParser", pipeline.StageParser},
+			{"beforeCleanup", pipeline.StageCleanup},
+		}
+
+		for _, stage := range stages {
+			existingStageTask := mock.NewMockTask(ctrl)
+			existingStageTask.EXPECT().GetName().Return("mockTask").Times(1)
+			p.SetStage(stage.existingName, pipeline.SyncRunner(existingStageTask))
+
+			beforeTask := mock.NewMockTask(ctrl)
+			beforeTask.EXPECT().GetName().Return("mockTask").Times(1)
+			p.AddStageBefore(stage.existingName, stage.name, pipeline.SyncRunner(beforeTask))
+
+			gomock.InOrder(
+				beforeTask.EXPECT().Run(gomock.Any(), gomock.Any()).Return(nil).Times(1),
+				existingStageTask.EXPECT().Run(gomock.Any(), gomock.Any()).Return(nil).Times(1),
+			)
+		}
+
+		options := &pipeline.Options{}
+
+		if _, err := p.Run(ctx, 1, options); err != nil {
+			t.Errorf("should not return error")
+		}
+	})
+
+	t.Run("pipeline returns err", func(t *testing.T) {
+		ctrl, ctx := gomock.WithContext(context.Background(), t)
+		defer ctrl.Finish()
+
+		stageErr := errors.New("err")
+		payloadFactoryMock := mock.NewMockPayloadFactory(ctrl)
+		payloadFactoryMock.EXPECT().GetPayload(gomock.Any()).Return(&payloadMock{}).Times(1)
+
+		p := pipeline.New(payloadFactoryMock)
+
+		beforeTask := mock.NewMockTask(ctrl)
+		beforeTask.EXPECT().GetName().Return("mockTask").Times(1)
+		beforeTask.EXPECT().Run(gomock.Any(), gomock.Any()).Return(stageErr).Times(1)
+		p.AddStageBefore(pipeline.StageFetcher, "beforeFetcher", pipeline.SyncRunner(beforeTask))
+
+		existingStageTask := mock.NewMockTask(ctrl)
+		existingStageTask.EXPECT().GetName().Return("mockTask").Times(0)
+		existingStageTask.EXPECT().Run(gomock.Any(), gomock.Any()).Return(nil).Times(0)
+		p.SetStage(pipeline.StageFetcher, pipeline.SyncRunner(existingStageTask))
+
+		options := &pipeline.Options{}
+
+		if _, err := p.Run(ctx, 1, options); err != stageErr {
+			t.Errorf("should return error")
+		}
+	})
+}
+
+func TestPipeline_AddStageAfter(t *testing.T) {
+	t.Run("new stage is executed after existing stage", func(t *testing.T) {
+		ctrl, ctx := gomock.WithContext(context.Background(), t)
+		defer ctrl.Finish()
+
+		payloadFactoryMock := mock.NewMockPayloadFactory(ctrl)
+		payloadFactoryMock.EXPECT().GetPayload(gomock.Any()).Return(&payloadMock{}).Times(1)
+
+		p := pipeline.New(payloadFactoryMock)
+
+		stages := []struct {
+			name         pipeline.StageName
+			existingName pipeline.StageName
+		}{
+			{"afterSetup", pipeline.StageSetup},
+			{"afterFetcher", pipeline.StageFetcher},
+			{"afterParser", pipeline.StageParser},
+			{"afterCleanup", pipeline.StageCleanup},
+		}
+
+		for _, stage := range stages {
+			existingStageTask := mock.NewMockTask(ctrl)
+			existingStageTask.EXPECT().GetName().Return("mockTask").Times(1)
+			p.SetStage(stage.existingName, pipeline.SyncRunner(existingStageTask))
+
+			afterTask := mock.NewMockTask(ctrl)
+			afterTask.EXPECT().GetName().Return("mockTask").Times(1)
+			p.AddStageAfter(stage.existingName, stage.name, pipeline.SyncRunner(afterTask))
+
+			gomock.InOrder(
+				existingStageTask.EXPECT().Run(gomock.Any(), gomock.Any()).Return(nil).Times(1),
+				afterTask.EXPECT().Run(gomock.Any(), gomock.Any()).Return(nil).Times(1),
+			)
+		}
+
+		options := &pipeline.Options{}
+
+		if _, err := p.Run(ctx, 1, options); err != nil {
+			t.Errorf("should not return error")
+		}
+	})
+
+	t.Run("pipeline returns err", func(t *testing.T) {
+		ctrl, ctx := gomock.WithContext(context.Background(), t)
+		defer ctrl.Finish()
+
+		stageErr := errors.New("err")
+		payloadFactoryMock := mock.NewMockPayloadFactory(ctrl)
+		payloadFactoryMock.EXPECT().GetPayload(gomock.Any()).Return(&payloadMock{}).Times(1)
+
+		p := pipeline.New(payloadFactoryMock)
+
+		afterTask := mock.NewMockTask(ctrl)
+		afterTask.EXPECT().GetName().Return("mockTask").Times(1)
+		afterTask.EXPECT().Run(gomock.Any(), gomock.Any()).Return(stageErr).Times(1)
+		p.AddStageAfter(pipeline.StageFetcher, "afterFetcher", pipeline.SyncRunner(afterTask))
+
+		existingStageTask := mock.NewMockTask(ctrl)
+		existingStageTask.EXPECT().GetName().Return("mockTask").Times(1)
+		existingStageTask.EXPECT().Run(gomock.Any(), gomock.Any()).Return(nil).Times(1)
+		p.SetStage(pipeline.StageFetcher, pipeline.SyncRunner(existingStageTask))
+
+		options := &pipeline.Options{}
+
+		if _, err := p.Run(ctx, 1, options); err != stageErr {
+			t.Errorf("should return error")
+		}
+	})
+}
+
+func TestPipeline_StagesBlacklist(t *testing.T) {
+	t.Run("blacklisted stage should not run", func(t *testing.T) {
+		ctrl, ctx := gomock.WithContext(context.Background(), t)
+		defer ctrl.Finish()
+
+		payloadFactoryMock := mock.NewMockPayloadFactory(ctrl)
+		payloadFactoryMock.EXPECT().GetPayload(gomock.Any()).Return(&payloadMock{}).Times(1)
+
+		p := pipeline.New(payloadFactoryMock)
+
+		rand.Seed(time.Now().Unix())
+		blacklistedStage := allStages[rand.Intn(len(allStages))]
+		options := &pipeline.Options{
+			StagesBlacklist: []pipeline.StageName{blacklistedStage},
+		}
+
+		for _, stage := range allStages {
+			var calls int
+			if stage != blacklistedStage {
+				calls = 1
+			}
+			mockTask := mock.NewMockTask(ctrl)
+			mockTask.EXPECT().GetName().Return("mockTask").Times(calls)
+			mockTask.EXPECT().Run(gomock.Any(), gomock.Any()).Return(nil).Times(calls)
+			p.SetStage(stage, pipeline.SyncRunner(mockTask))
+		}
+
+		if _, err := p.Run(ctx, 1, options); err != nil {
 			t.Errorf("should not return error")
 		}
 	})
