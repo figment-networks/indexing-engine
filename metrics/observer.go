@@ -3,15 +3,17 @@ package metrics
 type Observer interface {
 	Observe(float64)
 }
-
 type HistogramBucketOptions struct {
 	Type    string
 	Buckets []string
 }
-
 type HistogramOptions struct {
-	Options
-	Buckets HistogramBucketOptions
+	Namespace string
+	Subsystem string
+	Name      string
+	Desc      string
+	Tags      []string
+	Buckets   HistogramBucketOptions
 }
 
 func NewHistogramWithTags(opts HistogramOptions) (*GroupTagHistogram, error) {
