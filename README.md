@@ -87,11 +87,82 @@ afterFetcherFunc := pipeline.StageRunnerFunc(func(ctx context.Context, p pipelin
 p.AddStageBefore(pipeline.StageFetcher, CustomStageName, afterFetcherFunc)
 ```
 
+### Running pipeline stages in custom order
+
+If you want to run stages in a different order than outlined in the flowchart,
+then create a new custom pipeline
+
+```go
+p := pipeline.NewCustom(payloadFactory)
+```
+
+This creates a pipeline where the stage dependencies are empty. You must set
+a stage dependency with every stage. If a stage has no dependencies, call `SetDependency` with an empty list
+
+```go
+
+p.SetStage(
+  pipeline.StageSetup,
+  pipeline.SyncRunner(NewTask()),
+)
+
+p.SetDependency(pipeline.StageSetup, []pipeline.StageName{})
+```
+
+Before a stage runs, all its dependencies must run first. In the example below, `StageSetup` is set as a dependency of `StageFetcher`. This means `StageFetcher` will
+run only after `StageSetup` has completed.
+
+```go
+p.SetStage(
+  pipeline.StageFetcher,
+  pipeline.SyncRunner(NewTask()),
+)
+
+p.SetDependency(pipeline.StageFetcher, []pipeline.StageName{pipeline.StageSetup})
+```
+
+
+If multiple stages are able to run, then they will run in parallel. In the example below, `StageAggregator` and `StageSequencer` both depend on `StageFetcher`. Once `StageFetcher` is complete, both `StageAggregator` and `StageSequencer` will run concurrently.
+
+
+```go
+p.SetStage(
+  pipeline.StageAggregator,
+  pipeline.SyncRunner(NewTask()),
+)
+
+p.SetDependency(pipeline.StageAggregator, []pipeline.StageName{pipeline.StageFetcher})
+
+
+p.SetStage(
+  pipeline.StageSequencer,
+  pipeline.SyncRunner(NewTask()),
+)
+
+p.SetDependency(pipeline.StageSequencer, []pipeline.StageName{pipeline.StageFetcher})
+
+
+```
+
+All running stages must finish before starting any new stages. In the example below, although `StageCleanup` only depends on `StageSequencer`, both `StageAggregator` and `StageSequencer` need to finish (since they have both started because they are running in parallel) before `StageCleanup` is run.
+
+
+```go
+p.SetStage(
+  pipeline.StageCleanup,
+  pipeline.SyncRunner(NewTask()),
+)
+
+p.SetDependency(pipeline.StageCleanup, []pipeline.StageName{pipeline.StageSequencer})
+
+```
+
+
  ### Retrying
  github.com/figment-networks/indexing-engine provides 2 types of retrying mechanisms:
  * `RetryingStageRunner` - which is responsible for retrying the entire stage if error occurred
  * `RetryingTask` - which is responsible for retrying individual tasks if it return error
- 
+
  In order to implement retrying mechanism you need to wrap stage or task with above functions.
  Here is an example of use of `RetryingTask`:
  ```go
