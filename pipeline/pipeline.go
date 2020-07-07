@@ -41,7 +41,20 @@ const (
 )
 
 var (
-	ErrMissingStages = errors.New("provide stages to run concurrently")
+	ErrMissingStages           = errors.New("provide stages to run concurrently")
+	ErrMisconfiguredDependency = errors.New("misconfigured stage dependency")
+
+	defaultDependencies = map[StageName][]StageName{
+		StageSetup:      []StageName{},
+		StageSyncer:     []StageName{StageSetup},
+		StageFetcher:    []StageName{StageSyncer},
+		StageParser:     []StageName{StageFetcher},
+		StageValidator:  []StageName{StageParser},
+		StageSequencer:  []StageName{StageValidator},
+		StageAggregator: []StageName{StageValidator},
+		StagePersistor:  []StageName{StageAggregator, StageSequencer},
+		StageCleanup:    []StageName{StagePersistor},
+	}
 )
 
 type StageName string
@@ -62,17 +75,31 @@ type Pipeline struct {
 
 	stages map[StageName]*stage
 
-	beforeStage map[StageName][]*stage
-	afterStage  map[StageName][]*stage
+	stageDependencies map[StageName][]StageName
+	beforeStage       map[StageName][]*stage
+	afterStage        map[StageName][]*stage
 }
 
+// New creates a pipeline
 func New(payloadFactor PayloadFactory) *Pipeline {
 	return &Pipeline{
 		payloadFactory: payloadFactor,
 
-		stages:      make(map[StageName]*stage),
-		beforeStage: make(map[StageName][]*stage),
-		afterStage:  make(map[StageName][]*stage),
+		stages:            make(map[StageName]*stage),
+		stageDependencies: defaultDependencies,
+		beforeStage:       make(map[StageName][]*stage),
+		afterStage:        make(map[StageName][]*stage),
+	}
+}
+
+func NewCustom(payloadFactor PayloadFactory) *Pipeline {
+	return &Pipeline{
+		payloadFactory: payloadFactor,
+
+		stages:            make(map[StageName]*stage),
+		stageDependencies: make(map[StageName][]StageName),
+		beforeStage:       make(map[StageName][]*stage),
+		afterStage:        make(map[StageName][]*stage),
 	}
 }
 
@@ -91,6 +118,11 @@ func (p *Pipeline) SetStage(stageName StageName, stageRunner StageRunner) {
 	p.stages[stageName] = NewStage(stageName, stageRunner)
 }
 
+// SetDependency sets dependencies that must run (if configured) before stage can be executed
+func (p *Pipeline) SetDependency(stageName StageName, dependencies []StageName) {
+	p.stageDependencies[stageName] = dependencies
+}
+
 // AddStageBefore adds custom stage before existing stage
 func (p *Pipeline) AddStageBefore(existingStageName StageName, name StageName, stageRunner StageRunner) {
 	p.beforeStage[existingStageName] = append(p.beforeStage[existingStageName], NewStage(name, stageRunner))
@@ -104,8 +136,11 @@ func (p *Pipeline) AddStageAfter(existingStageName StageName, name StageName, st
 // Start starts the pipeline
 func (p *Pipeline) Start(ctx context.Context, source Source, sink Sink, options *Options) error {
 	pCtx, _ := p.setupCtx(ctx)
-
 	p.options = options
+
+	if err := p.validateStages(); err != nil {
+		return err
+	}
 
 	var pipelineErr error
 	var recentPayload Payload
@@ -138,6 +173,10 @@ func (p *Pipeline) Start(ctx context.Context, source Source, sink Sink, options 
 
 // Run run one-off pipeline iteration for given height
 func (p *Pipeline) Run(ctx context.Context, height int64, options *Options) (Payload, error) {
+	if err := p.validateStages(); err != nil {
+		return nil, err
+	}
+
 	pCtx, _ := p.setupCtx(ctx)
 
 	p.options = options
@@ -151,6 +190,53 @@ func (p *Pipeline) Run(ctx context.Context, height int64, options *Options) (Pay
 	payload.MarkAsProcessed()
 
 	return payload, nil
+}
+
+// validateStages verfies that each stage has a dependency configured,
+// and that there are no dependency loops
+func (p *Pipeline) validateStages() error {
+	visited := make(map[StageName]struct{})
+
+	for len(visited) < len(p.stages) {
+		var stageRunCount int
+
+		for _, s := range p.stages {
+			if _, ok := visited[s.Name]; ok {
+				continue
+			}
+
+			deps, ok := p.stageDependencies[s.Name]
+			if !ok {
+				// each stage must have an entry in the dependency map
+				return ErrMisconfiguredDependency
+			}
+
+			canRun := true
+			for _, d := range deps {
+				if _, ok := p.stages[d]; !ok {
+					// don't block stage from running if dependency is not set up:
+					// default pipeline should still run if any stage is not configured
+					continue
+				}
+
+				if _, ok := visited[d]; !ok {
+					canRun = false
+					break
+				}
+			}
+
+			if canRun {
+				stageRunCount++
+				visited[s.Name] = struct{}{}
+			}
+		}
+
+		if stageRunCount == 0 {
+			return ErrMisconfiguredDependency
+		}
+	}
+
+	return nil
 }
 
 // setupCtx sets up the context
@@ -167,39 +253,47 @@ func (p *Pipeline) setupCtx(ctx context.Context) (context.Context, context.Cance
 
 // runStages runs all the stages
 func (p *Pipeline) runStages(ctx context.Context, payload Payload) error {
-	if err := p.runStage(StageSetup, ctx, payload); err != nil {
-		return err
-	}
+	completedStages := make(map[StageName]struct{})
 
-	if err := p.runStage(StageSyncer, ctx, payload); err != nil {
-		return err
-	}
+	for len(completedStages) < len(p.stageDependencies) {
+		runNext := make([]StageName, 0)
 
-	if err := p.runStage(StageFetcher, ctx, payload); err != nil {
-		return err
-	}
+		for stage, deps := range p.stageDependencies {
+			if _, ok := completedStages[stage]; ok {
+				continue
+			}
 
-	if err := p.runStage(StageParser, ctx, payload); err != nil {
-		return err
-	}
+			canRun := true
+			for _, dep := range deps {
+				if _, ok := completedStages[dep]; !ok {
+					canRun = false
+					break
+				}
+			}
+			if canRun {
+				runNext = append(runNext, stage)
+			}
+		}
 
-	if err := p.runStage(StageValidator, ctx, payload); err != nil {
-		return err
-	}
+		if len(runNext) == 0 {
+			return errors.New("no stages to run")
+		}
 
-	if err := p.runStagesConcurrently(ctx, payload, []StageName{
-		StageSequencer,
-		StageAggregator,
-	}); err != nil {
-		return err
-	}
+		var runErr error
+		if len(runNext) == 1 {
+			runErr = p.runStage(runNext[0], ctx, payload)
+		} else if len(runNext) > 1 {
+			runErr = p.runStagesConcurrently(ctx, payload, runNext)
+		}
 
-	if err := p.runStage(StagePersistor, ctx, payload); err != nil {
-		return err
-	}
+		if runErr != nil {
+			return runErr
+		}
 
-	if err := p.runStage(StageCleanup, ctx, payload); err != nil {
-		return err
+		// mark stage as completed
+		for _, stage := range runNext {
+			completedStages[stage] = struct{}{}
+		}
 	}
 
 	return nil
