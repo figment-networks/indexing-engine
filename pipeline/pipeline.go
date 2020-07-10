@@ -41,8 +41,8 @@ const (
 )
 
 var (
-	ErrMissingStages           = errors.New("provide stages to run concurrently")
-	ErrMisconfiguredDependency = errors.New("misconfigured stage dependency")
+	ErrMissingStages = errors.New("provide stages to run concurrently")
+	ErrMissingStage  = errors.New("no stage to run")
 )
 
 type StageName string
@@ -285,7 +285,7 @@ func (p *pipeline) runStagesConcurrently(ctx context.Context, payload Payload, s
 // runStage executes stage runner for given stage
 func (p *pipeline) runStage(ctx context.Context, stage *stage, payload Payload) error {
 	if stage == nil {
-		return ErrMissingStages
+		return ErrMissingStage
 	}
 
 	if p.canRunStage(stage.Name) {
