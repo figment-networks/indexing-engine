@@ -3,9 +3,9 @@ package pipeline
 import (
 	"context"
 	"errors"
-	"fmt"
-	"github.com/hashicorp/go-multierror"
 	"sync"
+
+	"github.com/hashicorp/go-multierror"
 )
 
 const (
@@ -56,26 +56,54 @@ type Options struct {
 	TaskWhitelist []TaskName
 }
 
-type StageWithRunner struct {
-	stageName   StageName
-	stageRunner StageRunner
-}
-
-// Default implements a modular, multi-stage pipeline with set stages
-type Default interface {
-	SetStageRunner(stageName StageName, stageRunner StageRunner)
+type Pipeline interface {
 	AddStageBefore(existingStageName StageName, name StageName, stageRunner StageRunner)
 	AddStageAfter(existingStageName StageName, name StageName, stageRunner StageRunner)
 	Start(ctx context.Context, source Source, sink Sink, options *Options) error
 	Run(ctx context.Context, height int64, options *Options) (Payload, error)
 }
 
-type Pipeline interface {
-	Default
-	AddStage(stageName StageName, stageRunner StageRunner)
-	AddConcurrentStages(stageWithRunner ...StageWithRunner)
+// DefaultPipeline is implemented by types that want to use set stages
+type DefaultPipeline interface {
+	Pipeline
+
+	SetStageRunner(stageName StageName, stageRunner StageRunner)
 }
 
+// CustomPipeline is implemented by types that want to add custom stages
+type CustomPipeline interface {
+	Pipeline
+
+	AddStage(stageName StageName, stageRunner StageRunner)
+	AddConcurrentStages(stages ...*stage)
+}
+
+// NewDefault creates a new DefaultPipeline with default stages set in default run order
+func NewDefault(payloadFactor PayloadFactory) DefaultPipeline {
+	p := new(payloadFactor)
+
+	emptyRunner := StageRunnerFunc(func(context.Context, Payload, TaskValidator) error {
+		return nil
+	})
+
+	p.AddStage(StageSetup, emptyRunner)
+	p.AddStage(StageSyncer, emptyRunner)
+	p.AddStage(StageFetcher, emptyRunner)
+	p.AddStage(StageParser, emptyRunner)
+	p.AddStage(StageValidator, emptyRunner)
+	p.AddConcurrentStages(NewStage(StageSequencer, emptyRunner), NewStage(StageAggregator, emptyRunner))
+	p.AddStage(StagePersistor, emptyRunner)
+	p.AddStage(StageCleanup, emptyRunner)
+
+	return p
+}
+
+// NewCustom creates a new pipeline that satisfies CustomPipeline
+func NewCustom(payloadFactor PayloadFactory) CustomPipeline {
+	return new(payloadFactor)
+}
+
+// pipeline implements a modular, multi-stage pipeline
 type pipeline struct {
 	payloadFactory PayloadFactory
 	options        *Options
@@ -86,23 +114,7 @@ type pipeline struct {
 	afterStage  map[StageName][]*stage
 }
 
-// NewDefault creates a new default pipeline
-func NewDefault(payloadFactor PayloadFactory) Default {
-	p := New(payloadFactor)
-
-	p.AddStage(StageSetup, emptyRunner())
-	p.AddStage(StageSyncer, emptyRunner())
-	p.AddStage(StageFetcher, emptyRunner())
-	p.AddStage(StageParser, emptyRunner())
-	p.AddStage(StageValidator, emptyRunner())
-	p.AddConcurrentStages(StageWithRunner{StageSequencer, emptyRunner()}, StageWithRunner{StageAggregator, emptyRunner()})
-	p.AddStage(StagePersistor, emptyRunner())
-	p.AddStage(StageCleanup, emptyRunner())
-	return p
-}
-
-// New creates a new pipeline
-func New(payloadFactor PayloadFactory) Pipeline {
+func new(payloadFactor PayloadFactory) *pipeline {
 	return &pipeline{
 		payloadFactory: payloadFactor,
 		stages:         [][]*stage{},
@@ -133,16 +145,13 @@ func (p *pipeline) SetStageRunner(stageName StageName, stageRunner StageRunner) 
 	}
 }
 
+// AddStage adds stage to pipeline
 func (p *pipeline) AddStage(stageName StageName, stageRunner StageRunner) {
 	p.stages = append(p.stages, []*stage{NewStage(stageName, stageRunner)})
 }
 
-func (p *pipeline) AddConcurrentStages(stageWithRunner ...StageWithRunner) {
-	stages := make([]*stage, len(stageWithRunner))
-	for i, s := range stageWithRunner {
-		stages[i] = NewStage(s.stageName, s.stageRunner)
-	}
-
+// AddConcurrentStages adds multiple stages that will run concurrently in the pipeline
+func (p *pipeline) AddConcurrentStages(stages ...*stage) {
 	p.stages = append(p.stages, stages)
 }
 

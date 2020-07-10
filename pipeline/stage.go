@@ -43,17 +43,6 @@ func (s *stage) canRunTask(taskName string, options *Options) bool {
 	return true
 }
 
-func emptyRunner() StageRunner {
-	return defEmptyRunner{}
-}
-
-type defEmptyRunner struct {
-}
-
-func (r defEmptyRunner) Run(ctx context.Context, payload Payload, canRunTask TaskValidator) error {
-	return nil
-}
-
 // SyncRunner runs tasks one by one
 func SyncRunner(tasks ...Task) StageRunner {
 	return syncRunner{tasks: tasks}

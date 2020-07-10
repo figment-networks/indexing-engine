@@ -328,15 +328,13 @@ func TestPipeline_NewCustom(t *testing.T) {
 		payloadFactoryMock := mock.NewMockPayloadFactory(ctrl)
 		payloadFactoryMock.EXPECT().GetPayload(gomock.Any()).Return(&payloadMock{}).Times(1)
 
-		p := pipeline.New(payloadFactoryMock)
-
-		stages := []pipeline.StageName{
-			pipeline.StageParser, pipeline.StageAggregator, pipeline.StageSetup,
-		}
+		p := pipeline.NewCustom(payloadFactoryMock)
 
 		runCalls := []*gomock.Call{}
 
-		for _, stage := range stages {
+		for _, stage := range []pipeline.StageName{
+			pipeline.StageParser, pipeline.StageAggregator, pipeline.StageSetup,
+		} {
 			mockTask := mock.NewMockTask(ctrl)
 			mockTask.EXPECT().GetName().Return("mockTask").Times(1)
 
@@ -351,6 +349,38 @@ func TestPipeline_NewCustom(t *testing.T) {
 			sinkMock.EXPECT().Consume(gomock.Any(), gomock.Any()).Return(nil).Times(1))
 
 		gomock.InOrder(runCalls...)
+
+		if err := p.Start(ctx, &sourceMock{1, 1, 1}, sinkMock, nil); err != nil {
+			t.Errorf("did not expect error")
+		}
+	})
+
+	t.Run("custom pipeline runs tasks in concurrent stages", func(t *testing.T) {
+		ctrl, ctx := gomock.WithContext(context.Background(), t)
+		defer ctrl.Finish()
+
+		payloadFactoryMock := mock.NewMockPayloadFactory(ctrl)
+		payloadFactoryMock.EXPECT().GetPayload(gomock.Any()).Return(&payloadMock{}).Times(1)
+
+		p := pipeline.NewCustom(payloadFactoryMock)
+
+		mockTasks := make([]pipeline.Task, 3)
+
+		for i := 0; i < 3; i++ {
+			mockTask := mock.NewMockTask(ctrl)
+			mockTask.EXPECT().GetName().Return("mockTask").Times(1)
+			mockTask.EXPECT().Run(gomock.Any(), gomock.Any()).Return(nil).Times(1)
+			mockTasks[i] = mockTask
+		}
+
+		p.AddConcurrentStages(
+			pipeline.NewStage(pipeline.StageCleanup, pipeline.SyncRunner(mockTasks[0])),
+			pipeline.NewStage(pipeline.StageParser, pipeline.SyncRunner(mockTasks[1])),
+			pipeline.NewStage(pipeline.StageSetup, pipeline.SyncRunner(mockTasks[2])),
+		)
+
+		sinkMock := mock.NewMockSink(ctrl)
+		sinkMock.EXPECT().Consume(gomock.Any(), gomock.Any()).Return(nil).Times(1)
 
 		if err := p.Start(ctx, &sourceMock{1, 1, 1}, sinkMock, nil); err != nil {
 			t.Errorf("did not expect error")
