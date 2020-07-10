@@ -13,14 +13,14 @@ var (
 
 func NewStage(name StageName, runner StageRunner) *stage {
 	return &stage{
-		Name:      name,
-		runner:    runner,
+		Name:   name,
+		runner: runner,
 	}
 }
 
 type stage struct {
-	Name      StageName
-	runner    StageRunner
+	Name   StageName
+	runner StageRunner
 }
 
 // Run runs the stage runner assigned to stage
@@ -41,6 +41,17 @@ func (s *stage) canRunTask(taskName string, options *Options) bool {
 		return false
 	}
 	return true
+}
+
+func emptyRunner() StageRunner {
+	return defEmptyRunner{}
+}
+
+type defEmptyRunner struct {
+}
+
+func (r defEmptyRunner) Run(ctx context.Context, payload Payload, canRunTask TaskValidator) error {
+	return nil
 }
 
 // SyncRunner runs tasks one by one
