@@ -3,6 +3,7 @@ package pipeline
 import (
 	"context"
 	"errors"
+	"fmt"
 	"sync"
 
 	"github.com/hashicorp/go-multierror"
@@ -231,19 +232,16 @@ func (p *pipeline) setupCtx(ctx context.Context) (context.Context, context.Cance
 // runStages runs all the stages
 func (p *pipeline) runStages(ctx context.Context, payload Payload) error {
 	for _, stages := range p.stages {
-		if len(stages) == 0 {
-			continue
-		}
-
-		if len(stages) > 1 {
+		if len(stages) == 1 {
+			if err := p.runStage(ctx, stages[0], payload); err != nil {
+				return err
+			}
+		} else if len(stages) > 1 {
 			if err := p.runStagesConcurrently(ctx, payload, stages); err != nil {
 				return err
 			}
-			continue
-		}
-
-		if err := p.runStage(ctx, stages[0], payload); err != nil {
-			return err
+		} else {
+			logInfo("no stages to run")
 		}
 	}
 
