@@ -10,11 +10,7 @@ func NewCounterWithTags(opts Options) (*GroupTagCounter, error) {
 }
 
 func MustNewCounterWithTags(opts Options) *GroupTagCounter {
-	c, err := DetaultMetrics.NewCounterWithTags(opts)
-	if err != nil {
-		panic("Metric Error: " + err.Error())
-	}
-	return c
+	return DetaultMetrics.MustNewCounterWithTags(opts)
 }
 
 type TagCounter interface {
@@ -24,6 +20,7 @@ type TagCounter interface {
 
 type GroupTagCounter struct {
 	tagcounters []TagCounter
+	options     Options
 }
 
 func (gtc *GroupTagCounter) AddCounter(c TagCounter) {

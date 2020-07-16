@@ -28,6 +28,7 @@ type TagGauge interface {
 
 type GroupTagGauge struct {
 	taggauges []TagGauge
+	options   Options
 }
 
 func (gtg *GroupTagGauge) AddGauge(g TagGauge) {

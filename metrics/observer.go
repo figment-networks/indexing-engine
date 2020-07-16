@@ -35,6 +35,7 @@ type TagObserver interface {
 
 type GroupTagHistogram struct {
 	tagobservers []TagObserver
+	options      HistogramOptions
 }
 
 func (gth *GroupTagHistogram) AddHistogram(o TagObserver) {
