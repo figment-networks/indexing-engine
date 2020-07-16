@@ -37,13 +37,13 @@ type Sink interface {
 // TaskValidator is a type for validating task by provided task name
 type TaskValidator func(string) bool
 
-// StageRunner is implemented by types that know how to run tasks
-type StageRunner interface {
-	// Run StageRunner
+// stageRunner is implemented by types that know how to run tasks
+type stageRunner interface {
+	// Run stageRunner
 	Run(context.Context, Payload, TaskValidator) error
 }
 
-// StageRunnerFunc is an adapter to allow the use of plain functions as StageRunner
+// StageRunnerFunc is an adapter to allow the use of plain functions as stageRunner
 type StageRunnerFunc func(context.Context, Payload, TaskValidator) error
 
 // Run calls f(ctx, p, f).
