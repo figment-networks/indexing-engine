@@ -3,6 +3,7 @@ package indexing
 import (
 	"context"
 	"fmt"
+
 	"github.com/figment-networks/indexing-engine/pipeline"
 )
 
@@ -13,39 +14,40 @@ const (
 func StartPipeline() error {
 	p := pipeline.NewDefault(NewPayloadFactory())
 
-	// Set fetcher stage
+	// Set tasks in fetcher stage
 	// Demonstrates use of retrying mechanism for tasks inside the stage
-	p.SetStageRunner(
+	p.SetTasks(
 		pipeline.StageFetcher,
-		pipeline.AsyncRunner(
-			pipeline.RetryingTask(NewFetcherTask(), func(err error) bool {
-				// Make error always transient for simplicity
-				return true
-			}, 3),
-		),
-	)
-
-	// Set parser stage
-	p.SetStageRunner(pipeline.StageParser, pipeline.SyncRunner(NewParserTask()))
-
-	// Set validator stage
-	p.SetStageRunner(pipeline.StageValidator, pipeline.SyncRunner(NewValidatorTask()))
-
-	// Set syncer stage
-	// Demonstrates use of retrying mechanism for entire stage
-	p.SetStageRunner(
-		pipeline.StageSyncer,
-		pipeline.RetryingStageRunner(pipeline.SyncRunner(NewSyncerTask()), func(err error) bool {
+		pipeline.RetryingTask(NewFetcherTask(), func(err error) bool {
 			// Make error always transient for simplicity
 			return true
 		}, 3),
 	)
 
+	// Set parser stage
+	p.SetTasks(pipeline.StageParser, NewParserTask(), NewParserTask2())
+
+	// Set validator stage
+	p.SetAsyncTasks(pipeline.StageValidator, NewValidatorTask(), NewValidatorTask2())
+
+	// Set syncer stage
+	p.SetTasks(pipeline.StageSyncer, NewSyncerTask())
+
+	// wraps entire stage with retry mechanism
+	p.RetryStage(
+		pipeline.StageSyncer,
+		func(err error) bool {
+			// Make error always transient for simplicity
+			return true
+		},
+		3,
+	)
+
 	// Set sequencer stage
-	p.SetStageRunner(pipeline.StageSequencer, pipeline.AsyncRunner(NewSequencerTask()))
+	p.SetTasks(pipeline.StageSequencer, NewSequencerTask())
 
 	// Set aggregator stage
-	p.SetStageRunner(pipeline.StageAggregator, pipeline.AsyncRunner(NewAggregatorTask()))
+	p.SetTasks(pipeline.StageAggregator, NewAggregatorTask())
 
 	// Add custom stage before existing one
 	// Demonstrates how to use func as a stage runner without a need to use structs
@@ -54,7 +56,10 @@ func StartPipeline() error {
 		fmt.Println("task: ", "BeforeFetcher", payload.CurrentHeight)
 		return nil
 	})
-	p.AddStageBefore(pipeline.StageFetcher, "BeforeFetcher", beforeFetcherFunc)
+	p.AddStageBefore(
+		pipeline.StageFetcher,
+		pipeline.NewCustomStage("BeforeFetcher", beforeFetcherFunc),
+	)
 
 	// Add custom stage after existing one
 	// Demonstrates how to use func as a stage runner without a need to use structs
@@ -63,7 +68,10 @@ func StartPipeline() error {
 		fmt.Println("task: ", "AfterValidator", payload.CurrentHeight)
 		return nil
 	})
-	p.AddStageAfter(pipeline.StageValidator, "AfterValidator", afterValidatorFunc)
+	p.AddStageAfter(
+		pipeline.StageValidator,
+		pipeline.NewCustomStage("AfterValidator", afterValidatorFunc),
+	)
 
 	ctx := context.Background()
 
