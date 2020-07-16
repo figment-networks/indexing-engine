@@ -14,6 +14,14 @@ import (
 
 var httptestSrv *httptest.Server
 
+var metricA = metrics.DetaultMetrics.MustNewCounterWithTags(metrics.Options{
+	Namespace: "a",
+	Subsystem: "b",
+	Name:      "c4",
+	Desc:      "d",
+	Tags:      []string{"e", "f", "g"},
+})
+
 func TestMain(m *testing.M) {
 
 	metric := New()
@@ -21,6 +29,14 @@ func TestMain(m *testing.M) {
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	err = metrics.DetaultMetrics.Hotload(metric.Name())
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	counter := metricA.WithLabels([]string{"e3", "f3", "g3"})
+	counter.Inc()
 
 	mux := http.NewServeMux()
 	mux.Handle("/metrics", metric.Handler())
@@ -54,6 +70,7 @@ func TestMetrics_NewCounterWithTags(t *testing.T) {
 		res.Body.Close()
 
 		require.Contains(t, string(data), `a_b_c{e="e1",f="f1",g="g1"} 3`)
+		require.Contains(t, string(data), `a_b_c4{e="e3",f="f3",g="g3"} 1`) // chceck for predeclared hotload as well
 
 	})
 
@@ -78,6 +95,7 @@ func TestMetrics_NewCounterWithTags(t *testing.T) {
 		res.Body.Close()
 
 		require.Contains(t, string(data), `a_b_c1{e="e1",g="g1"} 1`)
+		require.Contains(t, string(data), `a_b_c4{e="e3",f="f3",g="g3"} 1`) // chceck for predeclared hotload as well
 	})
 
 	t.Run("New observer with tags", func(t *testing.T) {
@@ -100,5 +118,6 @@ func TestMetrics_NewCounterWithTags(t *testing.T) {
 
 		require.Contains(t, string(data), `a_b_c2_sum{e="e1",f="f1",g="g1"} 123.456`)
 
+		require.Contains(t, string(data), `a_b_c4{e="e3",f="f3",g="g3"} 1`) // chceck for predeclared hotload as well
 	})
 }
