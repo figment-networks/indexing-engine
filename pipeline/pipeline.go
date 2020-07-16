@@ -83,18 +83,21 @@ type CustomPipeline interface {
 func NewDefault(payloadFactor PayloadFactory) DefaultPipeline {
 	p := new(payloadFactor)
 
-	emptyRunner := StageRunnerFunc(func(context.Context, Payload, TaskValidator) error {
-		return nil
-	})
+	emptyRunner := func(name StageName) StageRunner {
+		return StageRunnerFunc(func(context.Context, Payload, TaskValidator) error {
+			logInfo(fmt.Sprintf("stage name %s not set up", name))
+			return nil
+		})
+	}
 
-	p.AddStage(StageSetup, emptyRunner)
-	p.AddStage(StageSyncer, emptyRunner)
-	p.AddStage(StageFetcher, emptyRunner)
-	p.AddStage(StageParser, emptyRunner)
-	p.AddStage(StageValidator, emptyRunner)
-	p.AddConcurrentStages(NewStage(StageSequencer, emptyRunner), NewStage(StageAggregator, emptyRunner))
-	p.AddStage(StagePersistor, emptyRunner)
-	p.AddStage(StageCleanup, emptyRunner)
+	p.AddStage(StageSetup, emptyRunner(StageSetup))
+	p.AddStage(StageSyncer, emptyRunner(StageSyncer))
+	p.AddStage(StageFetcher, emptyRunner(StageFetcher))
+	p.AddStage(StageParser, emptyRunner(StageParser))
+	p.AddStage(StageValidator, emptyRunner(StageValidator))
+	p.AddConcurrentStages(NewStage(StageSequencer, emptyRunner(StageSequencer)), NewStage(StageAggregator, emptyRunner(StageAggregator)))
+	p.AddStage(StagePersistor, emptyRunner(StagePersistor))
+	p.AddStage(StageCleanup, emptyRunner(StageCleanup))
 
 	return p
 }
@@ -153,6 +156,9 @@ func (p *pipeline) AddStage(stageName StageName, stageRunner StageRunner) {
 
 // AddConcurrentStages adds multiple stages that will run concurrently in the pipeline
 func (p *pipeline) AddConcurrentStages(stages ...*stage) {
+	if len(stages) == 0 {
+		return
+	}
 	p.stages = append(p.stages, stages)
 }
 
