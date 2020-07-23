@@ -17,11 +17,11 @@ type HistogramOptions struct {
 }
 
 func NewHistogramWithTags(opts HistogramOptions) (*GroupTagHistogram, error) {
-	return DetaultMetrics.NewHistogramWithTags(opts)
+	return DefaultMetrics.NewHistogramWithTags(opts)
 }
 
 func MustNewHistogramWithTags(opts HistogramOptions) *GroupTagHistogram {
-	g, err := DetaultMetrics.NewHistogramWithTags(opts)
+	g, err := DefaultMetrics.NewHistogramWithTags(opts)
 	if err != nil {
 		panic("Metric Error: " + err.Error())
 	}

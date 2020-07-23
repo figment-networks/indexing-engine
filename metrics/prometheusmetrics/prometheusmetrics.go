@@ -2,7 +2,6 @@ package prometheusmetrics
 
 import (
 	"fmt"
-	"log"
 	"net/http"
 	"strconv"
 
@@ -51,7 +50,6 @@ func (m *Metrics) NewCounterWithTags(opts metrics.Options) (metrics.TagCounter, 
 	)
 
 	err := m.reg.Register(counter)
-	log.Printf("counter registred: %+v", counter)
 	return &TagCounter{c: counter}, err
 }
 
@@ -94,7 +92,6 @@ func (m *Metrics) NewHistogramWithTags(opts metrics.HistogramOptions) (metrics.T
 	histogram := prometheus.NewHistogramVec(options, opts.Tags)
 
 	err := m.reg.Register(histogram)
-	log.Printf("histogram registred: %+v", histogram)
 	return &TagHistogram{h: histogram}, err
 }
 

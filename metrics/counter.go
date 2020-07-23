@@ -6,11 +6,11 @@ type Counter interface {
 }
 
 func NewCounterWithTags(opts Options) (*GroupTagCounter, error) {
-	return DetaultMetrics.NewCounterWithTags(opts)
+	return DefaultMetrics.NewCounterWithTags(opts)
 }
 
 func MustNewCounterWithTags(opts Options) *GroupTagCounter {
-	return DetaultMetrics.MustNewCounterWithTags(opts)
+	return DefaultMetrics.MustNewCounterWithTags(opts)
 }
 
 type TagCounter interface {

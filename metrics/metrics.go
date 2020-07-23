@@ -4,16 +4,22 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 )
 
-var DetaultMetrics *Metrics
+var DefaultMetrics *Metrics
+var Debug bool
 
 func init() {
-	DetaultMetrics = NewMetrics()
+	DefaultMetrics = NewMetrics()
+	_, ok := os.LookupEnv("INDEXING_DEBUG_ENABLE")
+	if ok {
+		Debug = true
+	}
 }
 
 func Hotload(name string) error {
-	return DetaultMetrics.Hotload(name)
+	return DefaultMetrics.Hotload(name)
 }
 
 type MetricsEngine interface {
@@ -64,36 +70,41 @@ func (m *Metrics) Hotload(name string) error {
 	if !ok {
 		return fmt.Errorf("There is no such engine loaded")
 	}
-	log.Printf("Hotloading engine %s %+v", name, eng)
+	if Debug {
+		log.Printf("Hotloading engine %s %+v", name, eng)
+	}
 
 	for _, c := range m.counters {
-		log.Printf("Adding counter %+v", c.options)
 		counter, err := eng.NewCounterWithTags(c.options)
 		if err != nil {
 			return err
 		}
 		c.AddCounter(counter)
-		log.Printf("Added counter %+v", c.options)
+		if Debug {
+			log.Printf("Added counter %+v", c.options)
+		}
 	}
 
 	for _, c := range m.gauges {
-		log.Printf("Adding gauge %+v", c.options)
 		gauge, err := eng.NewGaugeWithTags(c.options)
 		if err != nil {
 			return err
 		}
 		c.AddGauge(gauge)
-		log.Printf("Added gauge %+v", c.options)
+		if Debug {
+			log.Printf("Added gauge %+v", c.options)
+		}
 	}
 
 	for _, c := range m.observers {
-		log.Printf("Adding histogram %+v", c.options)
 		observer, err := eng.NewHistogramWithTags(c.options)
 		if err != nil {
 			return err
 		}
 		c.AddHistogram(observer)
-		log.Printf("Added histogram %+v", c.options)
+		if Debug {
+			log.Printf("Added histogram %+v", c.options)
+		}
 	}
 
 	m.handler.Handler = eng.Handler()

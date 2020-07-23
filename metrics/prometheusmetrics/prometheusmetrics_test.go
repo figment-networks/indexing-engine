@@ -14,7 +14,7 @@ import (
 
 var httptestSrv *httptest.Server
 
-var metricA = metrics.DetaultMetrics.MustNewCounterWithTags(metrics.Options{
+var metricA = metrics.DefaultMetrics.MustNewCounterWithTags(metrics.Options{
 	Namespace: "a",
 	Subsystem: "b",
 	Name:      "c4",
@@ -25,12 +25,12 @@ var metricA = metrics.DetaultMetrics.MustNewCounterWithTags(metrics.Options{
 func TestMain(m *testing.M) {
 
 	metric := New()
-	err := metrics.DetaultMetrics.AddEngine(metric)
+	err := metrics.DefaultMetrics.AddEngine(metric)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	err = metrics.DetaultMetrics.Hotload(metric.Name())
+	err = metrics.DefaultMetrics.Hotload(metric.Name())
 	if err != nil {
 		log.Fatal(err)
 	}

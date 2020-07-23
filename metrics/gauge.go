@@ -10,11 +10,11 @@ type Gauge interface {
 }
 
 func NewGaugeWithTags(opts Options) (*GroupTagGauge, error) {
-	return DetaultMetrics.NewGaugeWithTags(opts)
+	return DefaultMetrics.NewGaugeWithTags(opts)
 }
 
 func MustNewGaugeWithTags(opts Options) *GroupTagGauge {
-	g, err := DetaultMetrics.NewGaugeWithTags(opts)
+	g, err := DefaultMetrics.NewGaugeWithTags(opts)
 	if err != nil {
 		panic("Metric Error: " + err.Error())
 	}
