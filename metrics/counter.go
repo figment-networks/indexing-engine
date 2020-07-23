@@ -15,7 +15,7 @@ func MustNewCounterWithTags(opts Options) *GroupTagCounter {
 
 type TagCounter interface {
 	WithTags(map[string]string) (Counter, error)
-	WithLabels([]string) Counter
+	WithLabels(...string) Counter
 }
 
 type GroupTagCounter struct {
@@ -40,10 +40,10 @@ func (gtc *GroupTagCounter) WithTags(tags map[string]string) (*GroupCounter, err
 	return gc, nil
 }
 
-func (gtc *GroupTagCounter) WithLabels(labels []string) *GroupCounter {
+func (gtc *GroupTagCounter) WithLabels(labels ...string) *GroupCounter {
 	gc := &GroupCounter{}
 	for _, tc := range gtc.tagcounters {
-		c := tc.WithLabels(labels)
+		c := tc.WithLabels(labels...)
 		gc.AddCounter(c)
 	}
 

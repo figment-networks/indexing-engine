@@ -103,7 +103,7 @@ func (tc *TagCounter) WithTags(tags map[string]string) (metrics.Counter, error) 
 	return tc.c.GetMetricWith(tags)
 }
 
-func (tc *TagCounter) WithLabels(lv []string) metrics.Counter {
+func (tc *TagCounter) WithLabels(lv ...string) metrics.Counter {
 	return tc.c.WithLabelValues(lv...)
 }
 
@@ -115,7 +115,7 @@ func (tg *TagGauge) WithTags(tags map[string]string) (metrics.Gauge, error) {
 	return tg.g.GetMetricWith(tags)
 }
 
-func (tg *TagGauge) WithLabels(lv []string) metrics.Gauge {
+func (tg *TagGauge) WithLabels(lv ...string) metrics.Gauge {
 	return tg.g.WithLabelValues(lv...)
 }
 
@@ -127,6 +127,6 @@ func (th *TagHistogram) WithTags(tags map[string]string) (metrics.Observer, erro
 	return th.h.GetMetricWith(tags)
 }
 
-func (th *TagHistogram) WithLabels(lv []string) metrics.Observer {
+func (th *TagHistogram) WithLabels(lv ...string) metrics.Observer {
 	return th.h.WithLabelValues(lv...)
 }

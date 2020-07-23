@@ -35,7 +35,7 @@ func TestMain(m *testing.M) {
 		log.Fatal(err)
 	}
 
-	counter := metricA.WithLabels([]string{"e3", "f3", "g3"})
+	counter := metricA.WithLabels("e3", "f3", "g3")
 	counter.Inc()
 
 	mux := http.NewServeMux()
@@ -60,7 +60,7 @@ func TestMetrics_NewCounterWithTags(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		counter := got.WithLabels([]string{"e1", "f1", "g1"})
+		counter := got.WithLabels("e1", "f1", "g1")
 		counter.Inc()
 		counter.Inc()
 		counter.Inc()
@@ -85,7 +85,7 @@ func TestMetrics_NewCounterWithTags(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		gauge := got.WithLabels([]string{"e1", "g1"})
+		gauge := got.WithLabels("e1", "g1")
 		gauge.Inc()
 		gauge.Dec()
 		gauge.Inc()
@@ -109,7 +109,7 @@ func TestMetrics_NewCounterWithTags(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		hist := got.WithLabels([]string{"e1", "f1", "g1"})
+		hist := got.WithLabels("e1", "f1", "g1")
 		hist.Observe(123.456)
 
 		res, err := http.Get(httptestSrv.URL + "/metrics")

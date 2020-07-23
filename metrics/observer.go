@@ -30,7 +30,7 @@ func MustNewHistogramWithTags(opts HistogramOptions) *GroupTagHistogram {
 
 type TagObserver interface {
 	WithTags(map[string]string) (Observer, error)
-	WithLabels([]string) Observer
+	WithLabels(...string) Observer
 }
 
 type GroupTagHistogram struct {
@@ -55,10 +55,10 @@ func (gth *GroupTagHistogram) WithTags(tags map[string]string) (*GroupObserver, 
 	return gh, nil
 }
 
-func (gth *GroupTagHistogram) WithLabels(labels []string) *GroupObserver {
+func (gth *GroupTagHistogram) WithLabels(labels ...string) *GroupObserver {
 	gh := &GroupObserver{}
 	for _, tc := range gth.tagobservers {
-		c := tc.WithLabels(labels)
+		c := tc.WithLabels(labels...)
 		gh.AddObserver(c)
 	}
 

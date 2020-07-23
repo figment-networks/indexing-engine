@@ -23,7 +23,7 @@ func MustNewGaugeWithTags(opts Options) *GroupTagGauge {
 
 type TagGauge interface {
 	WithTags(map[string]string) (Gauge, error)
-	WithLabels([]string) Gauge
+	WithLabels(...string) Gauge
 }
 
 type GroupTagGauge struct {
@@ -48,10 +48,10 @@ func (gtg *GroupTagGauge) WithTags(tags map[string]string) (*GroupGauge, error) 
 	return gc, nil
 }
 
-func (gtg *GroupTagGauge) WithLabels(labels []string) *GroupGauge {
+func (gtg *GroupTagGauge) WithLabels(labels ...string) *GroupGauge {
 	gc := &GroupGauge{}
 	for _, tc := range gtg.taggauges {
-		c := tc.WithLabels(labels)
+		c := tc.WithLabels(labels...)
 		gc.AddGauge(c)
 	}
 
