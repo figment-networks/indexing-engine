@@ -22,6 +22,14 @@ func Hotload(name string) error {
 	return DefaultMetrics.Hotload(name)
 }
 
+func AddEngine(eng MetricsEngine) error {
+	return DefaultMetrics.AddEngine(eng)
+}
+
+func Handler() http.Handler {
+	return DefaultMetrics.Handler()
+}
+
 type MetricsEngine interface {
 	Name() string
 
