@@ -144,9 +144,11 @@ func (p *pipeline) SetStageRunner(stageName StageName, stageRunner StageRunner) 
 		for _, s := range stages {
 			if s.Name == stageName {
 				s.runner = stageRunner
+				return
 			}
 		}
 	}
+	logInfo(fmt.Sprintf("cannot set stage runner for stage, stage '%v' not found on pipeline", stageName))
 }
 
 // AddStage adds stage to pipeline
