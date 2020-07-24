@@ -8,6 +8,7 @@ type Timer struct {
 	observer Observer
 }
 
+// NewTimer is a constructor for Timer, counting from time.Now()
 func NewTimer(o Observer) *Timer {
 	return &Timer{
 		begin:    time.Now(),
@@ -15,6 +16,7 @@ func NewTimer(o Observer) *Timer {
 	}
 }
 
+// ObserveDuration is commiting time duration that passed from it's creation
 func (t *Timer) ObserveDuration() time.Duration {
 	d := time.Since(t.begin)
 	if t.observer != nil {

@@ -7,8 +7,14 @@ import (
 	"os"
 )
 
-var DefaultMetrics *Metrics
-var Debug bool
+var (
+	// DefaultMetrics is the generic metrics aggregator
+	// needed for global variables so we can attach new metrics
+	// before the engine (like prometheus) is linked
+	DefaultMetrics *Metrics
+	// Debug flag
+	Debug bool
+)
 
 func init() {
 	DefaultMetrics = NewMetrics()
@@ -18,18 +24,22 @@ func init() {
 	}
 }
 
+// Hotload links given engine to previously added metrics
 func Hotload(name string) error {
 	return DefaultMetrics.Hotload(name)
 }
 
+// AddEngine adds new engine to DefaultMetrics
 func AddEngine(eng MetricsEngine) error {
 	return DefaultMetrics.AddEngine(eng)
 }
 
+// Handler returns an http handler from default
 func Handler() http.Handler {
 	return DefaultMetrics.Handler()
 }
 
+// MetricsEngine is an interface for metric engines
 type MetricsEngine interface {
 	Name() string
 
@@ -39,6 +49,7 @@ type MetricsEngine interface {
 	Handler() http.Handler
 }
 
+// Options for metrics
 type Options struct {
 	Namespace string
 	Subsystem string
@@ -47,6 +58,7 @@ type Options struct {
 	Tags      []string
 }
 
+// Metrics a structure that group all the defined metrics
 type Metrics struct {
 	handler *mhandler
 	mh      MetricsHandler
@@ -58,12 +70,14 @@ type Metrics struct {
 	observers []*GroupTagHistogram
 }
 
+// NewMetrics a metrics constructor
 func NewMetrics() *Metrics {
 	engines := make(map[string]MetricsEngine)
 	handle := &mhandler{}
 	return &Metrics{handler: handle, mh: MetricsHandler{handler: handle}, engines: engines}
 }
 
+// AddEngine adds new engine (like prometheus) to run
 func (m *Metrics) AddEngine(eng MetricsEngine) error {
 	_, ok := m.engines[eng.Name()]
 	if ok {
@@ -73,6 +87,7 @@ func (m *Metrics) AddEngine(eng MetricsEngine) error {
 	return nil
 }
 
+// Hotload loads all the previously defined metrics to given engine
 func (m *Metrics) Hotload(name string) error {
 	eng, ok := m.engines[name]
 	if !ok {
@@ -119,6 +134,7 @@ func (m *Metrics) Hotload(name string) error {
 	return nil
 }
 
+// NewCounterWithTags create a group of counters from defined engines
 func (m *Metrics) NewCounterWithTags(opts Options) (*GroupTagCounter, error) {
 	gc := &GroupTagCounter{
 		options: opts,
@@ -136,6 +152,7 @@ func (m *Metrics) NewCounterWithTags(opts Options) (*GroupTagCounter, error) {
 	return gc, nil
 }
 
+// MustNewCounterWithTags constructor with panic on error embedded
 func (m *Metrics) MustNewCounterWithTags(opts Options) *GroupTagCounter {
 	c, err := m.NewCounterWithTags(opts)
 	if err != nil {
@@ -144,6 +161,7 @@ func (m *Metrics) MustNewCounterWithTags(opts Options) *GroupTagCounter {
 	return c
 }
 
+// NewGaugeWithTags create a group of gauges from defined engines
 func (m *Metrics) NewGaugeWithTags(opts Options) (*GroupTagGauge, error) {
 	gc := &GroupTagGauge{
 		options: opts,
@@ -161,6 +179,7 @@ func (m *Metrics) NewGaugeWithTags(opts Options) (*GroupTagGauge, error) {
 	return gc, nil
 }
 
+// MustNewGaugeWithTags constructor with panic on error embedded
 func (m *Metrics) MustNewGaugeWithTags(opts Options) *GroupTagGauge {
 	gc, err := m.NewGaugeWithTags(opts)
 	if err != nil {
@@ -169,6 +188,7 @@ func (m *Metrics) MustNewGaugeWithTags(opts Options) *GroupTagGauge {
 	return gc
 }
 
+// NewHistogramWithTags create a group of histograms from defined engines
 func (m *Metrics) NewHistogramWithTags(opts HistogramOptions) (*GroupTagHistogram, error) {
 	gc := &GroupTagHistogram{
 		options: opts,
@@ -184,6 +204,7 @@ func (m *Metrics) NewHistogramWithTags(opts HistogramOptions) (*GroupTagHistogra
 	return gc, nil
 }
 
+// MustNewHistogramWithTags constructor with panic on error embedded
 func (m *Metrics) MustNewHistogramWithTags(opts HistogramOptions) *GroupTagHistogram {
 	gc, err := m.NewHistogramWithTags(opts)
 	if err != nil {
@@ -192,6 +213,7 @@ func (m *Metrics) MustNewHistogramWithTags(opts HistogramOptions) *GroupTagHisto
 	return gc
 }
 
+// Handler Returns metrics custom handler
 func (m *Metrics) Handler() http.Handler {
 	return m.mh
 }
@@ -200,10 +222,12 @@ type mhandler struct {
 	Handler http.Handler
 }
 
+// MetricsHandler a way to merge http handlers
 type MetricsHandler struct {
 	handler *mhandler
 }
 
+// ServeHTTP fulfills http.Handler interface
 func (mh MetricsHandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	if mh.handler != nil {
 		mh.handler.Handler.ServeHTTP(w, req)
