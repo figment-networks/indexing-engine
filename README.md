@@ -26,7 +26,7 @@ Below flow-chart depicts all the available stages that come with this package an
 ![indexing engine flow chart](/diagram.jpg)
 
 Please note that all syncing phase stages are executed in sequence, whereas indexing phase stages are executed concurrently
-in order to speed up the indexing process. 
+in order to speed up the indexing process.
 
 ## Installation
 
@@ -179,7 +179,7 @@ p.AddConcurrentStages(
 ```
 
 ## Examples
-In `/examples` folder you can find an examples of pipelines. To run use:
+In `/example` folder you can find an example of a pipeline. To run it use:
 ```shell script
 go run example/default/main.go
 

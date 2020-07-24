@@ -10,24 +10,25 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
+// Metrics Prometheus metrics engine
 type Metrics struct {
 	reg       *prometheus.Registry
 	gatherers prometheus.Gatherers
 }
 
+// New Prometheus Engine metrics constructor
 func New() (m *Metrics) {
 	reg := prometheus.NewRegistry()
 	reg.MustRegister(prometheus.NewProcessCollector(prometheus.ProcessCollectorOpts{}))
-
-	return &Metrics{reg: reg, gatherers: prometheus.Gatherers{
-		reg,
-	}}
+	return &Metrics{reg: reg, gatherers: prometheus.Gatherers{reg}}
 }
 
+// Name returns unique engine name
 func (m *Metrics) Name() string {
 	return "prometheus"
 }
 
+// Handler http Hangler for prometheus
 func (m *Metrics) Handler() http.Handler {
 	return promhttp.HandlerFor(
 		m.gatherers[0],
@@ -38,6 +39,7 @@ func (m *Metrics) Handler() http.Handler {
 	)
 }
 
+// NewCounterWithTags creates new prometheus counter, registering it
 func (m *Metrics) NewCounterWithTags(opts metrics.Options) (metrics.TagCounter, error) {
 	counter := prometheus.NewCounterVec(
 		prometheus.CounterOpts{
@@ -53,6 +55,7 @@ func (m *Metrics) NewCounterWithTags(opts metrics.Options) (metrics.TagCounter, 
 	return &TagCounter{c: counter}, err
 }
 
+// NewGaugeWithTags creates new prometheus gauge, registering it
 func (m *Metrics) NewGaugeWithTags(opts metrics.Options) (metrics.TagGauge, error) {
 	gauge := prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
@@ -68,6 +71,7 @@ func (m *Metrics) NewGaugeWithTags(opts metrics.Options) (metrics.TagGauge, erro
 	return &TagGauge{g: gauge}, err
 }
 
+// NewHistogramWithTags creates new histogram, registering it
 func (m *Metrics) NewHistogramWithTags(opts metrics.HistogramOptions) (metrics.TagObserver, error) {
 
 	options := prometheus.HistogramOpts{
@@ -86,7 +90,6 @@ func (m *Metrics) NewHistogramWithTags(opts metrics.HistogramOptions) (metrics.T
 			}
 			bList = append(bList, f)
 		}
-		//Buckets:   prometheus.ExponentialBuckets(0.1, 1.5, 5),
 		options.Buckets = bList
 	}
 	histogram := prometheus.NewHistogramVec(options, opts.Tags)
@@ -95,38 +98,47 @@ func (m *Metrics) NewHistogramWithTags(opts metrics.HistogramOptions) (metrics.T
 	return &TagHistogram{h: histogram}, err
 }
 
+// TagCounter Prometheus counter wrapper
 type TagCounter struct {
 	c *prometheus.CounterVec
 }
 
+// WithTags creates metric with given tags
 func (tc *TagCounter) WithTags(tags map[string]string) (metrics.Counter, error) {
 	return tc.c.GetMetricWith(tags)
 }
 
+// WithLabels creates metric with given tag values in defined order
 func (tc *TagCounter) WithLabels(lv ...string) metrics.Counter {
 	return tc.c.WithLabelValues(lv...)
 }
 
+// TagGauge Prometheus gauge wrapper
 type TagGauge struct {
 	g *prometheus.GaugeVec
 }
 
+// WithTags creates metric with given tags
 func (tg *TagGauge) WithTags(tags map[string]string) (metrics.Gauge, error) {
 	return tg.g.GetMetricWith(tags)
 }
 
+// WithLabels creates metric with given tag values in defined order
 func (tg *TagGauge) WithLabels(lv ...string) metrics.Gauge {
 	return tg.g.WithLabelValues(lv...)
 }
 
+// TagHistogram Prometheus histogram wrapper
 type TagHistogram struct {
 	h *prometheus.HistogramVec
 }
 
+// WithTags creates metric with given tags
 func (th *TagHistogram) WithTags(tags map[string]string) (metrics.Observer, error) {
 	return th.h.GetMetricWith(tags)
 }
 
+// WithLabels creates metric with given tag values in defined order
 func (th *TagHistogram) WithLabels(lv ...string) metrics.Observer {
 	return th.h.WithLabelValues(lv...)
 }
