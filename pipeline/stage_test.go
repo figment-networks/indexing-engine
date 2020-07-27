@@ -21,7 +21,7 @@ func TestStage_Running(t *testing.T) {
 		stageRunnerMock := mock.NewMockStageRunner(ctrl)
 		stageRunnerMock.EXPECT().Run(ctx, payloadMock, gomock.Any()).Return(nil)
 
-		s := pipeline.NewStage("test", stageRunnerMock)
+		s := pipeline.NewCustomStage("test", stageRunnerMock)
 
 		err := s.Run(ctx, payloadMock, nil)
 		if err != nil {
@@ -38,7 +38,7 @@ func TestStage_Running(t *testing.T) {
 		stageRunnerMock := mock.NewMockStageRunner(ctrl)
 		stageRunnerMock.EXPECT().Run(ctx, payloadMock, gomock.Any()).Return(errors.New("test error"))
 
-		s := pipeline.NewStage("test", stageRunnerMock)
+		s := pipeline.NewCustomStage("test", stageRunnerMock)
 
 		err := s.Run(ctx, payloadMock, nil)
 		if err == nil {
@@ -64,7 +64,7 @@ func TestStage_Running(t *testing.T) {
 		task2.EXPECT().GetName().Return("whitelistTask").Times(1)
 		task2.EXPECT().Run(gomock.Any(), gomock.Any()).Return(nil).Times(1)
 
-		s := pipeline.NewStage("test", pipeline.SyncRunner(task1, task2))
+		s := pipeline.NewStage("test", task1, task2)
 
 		err := s.Run(ctx, payloadMock, options)
 		if err != nil {
@@ -73,7 +73,7 @@ func TestStage_Running(t *testing.T) {
 	})
 }
 
-func TestStage_SyncRunner(t *testing.T) {
+func TestStage_SyncStage(t *testing.T) {
 	t.Run("both tasks return success", func(t *testing.T) {
 		ctrl, ctx := gomock.WithContext(context.Background(), t)
 		defer ctrl.Finish()
@@ -91,10 +91,9 @@ func TestStage_SyncRunner(t *testing.T) {
 			task2.EXPECT().Run(ctx, payloadMock).Return(nil),
 		)
 
-		var taskValidator pipeline.TaskValidator = func(n string) bool { return true }
-		sr := pipeline.SyncRunner(task1, task2)
+		s := pipeline.NewStage("test_stage", task1, task2)
 
-		err := sr.Run(ctx, payloadMock, taskValidator)
+		err := s.Run(ctx, payloadMock, nil)
 		if err != nil {
 			t.Errorf("should not return error")
 		}
@@ -114,10 +113,9 @@ func TestStage_SyncRunner(t *testing.T) {
 		task1.EXPECT().Run(ctx, payloadMock).Return(errors.New("test error"))
 		task2.EXPECT().Run(ctx, payloadMock).Return(nil).Times(0)
 
-		var taskValidator pipeline.TaskValidator = func(n string) bool { return true }
-		sr := pipeline.SyncRunner(task1, task2)
+		s := pipeline.NewStage("test_stage", task1, task2)
 
-		err := sr.Run(ctx, payloadMock, taskValidator)
+		err := s.Run(ctx, payloadMock, nil)
 		if err == nil {
 			t.Errorf("should return error")
 		}
@@ -138,10 +136,9 @@ func TestStage_SyncRunner(t *testing.T) {
 		task1.EXPECT().Run(ctx, payloadMock).Return(nil)
 		task2.EXPECT().Run(ctx, payloadMock).Return(errors.New("test error"))
 
-		var taskValidator pipeline.TaskValidator = func(n string) bool { return true }
-		sr := pipeline.SyncRunner(task1, task2)
+		s := pipeline.NewStage("test_stage", task1, task2)
 
-		err := sr.Run(ctx, payloadMock, taskValidator)
+		err := s.Run(ctx, payloadMock, nil)
 		if err == nil {
 			t.Errorf("should return error")
 		}
@@ -165,12 +162,11 @@ func TestStage_SyncRunner(t *testing.T) {
 			task2.EXPECT().Run(ctx, payloadMock).Return(nil),
 		)
 
-		var taskValidator pipeline.TaskValidator = func(n string) bool { return true }
-		sr := pipeline.SyncRunner(pipeline.RetryingTask(retryTask, func(err error) bool {
+		s := pipeline.NewStage("test_stage", pipeline.RetryingTask(retryTask, func(err error) bool {
 			return true
 		}, 3), task2)
 
-		err := sr.Run(ctx, payloadMock, taskValidator)
+		err := s.Run(ctx, payloadMock, nil)
 		if err != nil {
 			t.Errorf("should not return error")
 		}
@@ -191,19 +187,18 @@ func TestStage_SyncRunner(t *testing.T) {
 		task2.EXPECT().GetName().Return("task2").Times(0)
 		task2.EXPECT().Run(ctx, payloadMock).Return(nil).Times(0)
 
-		var taskValidator pipeline.TaskValidator = func(n string) bool { return true }
-		sr := pipeline.SyncRunner(pipeline.RetryingTask(retryTask, func(err error) bool {
+		s := pipeline.NewStage("test_stage", pipeline.RetryingTask(retryTask, func(err error) bool {
 			return true
 		}, 3), task2)
 
-		err := sr.Run(ctx, payloadMock, taskValidator)
+		err := s.Run(ctx, payloadMock, nil)
 		if err == nil {
 			t.Errorf("should return error")
 		}
 	})
 }
 
-func TestStage_AsyncRunner(t *testing.T) {
+func TestStage_AsyncStage(t *testing.T) {
 	t.Run("both tasks return success", func(t *testing.T) {
 		ctrl, ctx := gomock.WithContext(context.Background(), t)
 		defer ctrl.Finish()
@@ -219,10 +214,9 @@ func TestStage_AsyncRunner(t *testing.T) {
 		task1.EXPECT().Run(ctx, payloadMock).Return(nil)
 		task2.EXPECT().Run(ctx, payloadMock).Return(nil)
 
-		var taskValidator pipeline.TaskValidator = func(n string) bool { return true }
-		sr := pipeline.AsyncRunner(task1, task2)
+		s := pipeline.NewAsyncStage("test_stage", task1, task2)
 
-		err := sr.Run(ctx, payloadMock, taskValidator)
+		err := s.Run(ctx, payloadMock, nil)
 		if err != nil {
 			t.Errorf("should not return error")
 		}
@@ -243,10 +237,9 @@ func TestStage_AsyncRunner(t *testing.T) {
 		task1.EXPECT().Run(ctx, payloadMock).Return(errors.New("test error"))
 		task2.EXPECT().Run(ctx, payloadMock).Return(nil)
 
-		var taskValidator pipeline.TaskValidator = func(n string) bool { return true }
-		sr := pipeline.AsyncRunner(task1, task2)
+		s := pipeline.NewAsyncStage("test_stage", task1, task2)
 
-		err := sr.Run(ctx, payloadMock, taskValidator)
+		err := s.Run(ctx, payloadMock, nil)
 		if err == nil {
 			t.Errorf("should return error")
 		}
@@ -267,10 +260,9 @@ func TestStage_AsyncRunner(t *testing.T) {
 		task1.EXPECT().Run(ctx, payloadMock).Return(nil)
 		task2.EXPECT().Run(ctx, payloadMock).Return(errors.New("test error"))
 
-		var taskValidator pipeline.TaskValidator = func(n string) bool { return true }
-		sr := pipeline.AsyncRunner(task1, task2)
+		s := pipeline.NewAsyncStage("test_stage", task1, task2)
 
-		err := sr.Run(ctx, payloadMock, taskValidator)
+		err := s.Run(ctx, payloadMock, nil)
 		if err == nil {
 			t.Errorf("should return error")
 		}
@@ -291,90 +283,9 @@ func TestStage_AsyncRunner(t *testing.T) {
 		task1.EXPECT().Run(ctx, payloadMock).Return(errors.New("test error"))
 		task2.EXPECT().Run(ctx, payloadMock).Return(errors.New("test error"))
 
-		var taskValidator pipeline.TaskValidator = func(n string) bool { return true }
-		sr := pipeline.AsyncRunner(task1, task2)
+		s := pipeline.NewAsyncStage("test_stage", task1, task2)
 
-		err := sr.Run(ctx, payloadMock, taskValidator)
-		if err == nil {
-			t.Errorf("should return error")
-		}
-	})
-}
-
-func TestStage_RetryingStageRunner(t *testing.T) {
-	t.Run("tasks return success", func(t *testing.T) {
-		ctrl, ctx := gomock.WithContext(context.Background(), t)
-		defer ctrl.Finish()
-
-		payloadMock := mock.NewMockPayload(ctrl)
-
-		task1 := mock.NewMockTask(ctrl)
-		task2 := mock.NewMockTask(ctrl)
-
-		task1.EXPECT().GetName().Return("task1")
-		task2.EXPECT().GetName().Return("task2")
-
-		gomock.InOrder(
-			task1.EXPECT().Run(ctx, payloadMock).Return(nil),
-			task2.EXPECT().Run(ctx, payloadMock).Return(nil),
-		)
-
-		var taskValidator pipeline.TaskValidator = func(n string) bool { return true }
-
-		sr := pipeline.RetryingStageRunner(
-			pipeline.SyncRunner(task1, task2),
-			func(err error) bool { return true },
-			3)
-
-		err := sr.Run(ctx, payloadMock, taskValidator)
-		if err != nil {
-			t.Errorf("should not return error")
-		}
-	})
-
-	t.Run("task returns error then success", func(t *testing.T) {
-		ctrl, ctx := gomock.WithContext(context.Background(), t)
-		defer ctrl.Finish()
-
-		payloadMock := mock.NewMockPayload(ctrl)
-
-		task1 := mock.NewMockTask(ctrl)
-		task1.EXPECT().GetName().Return("task1").Times(2)
-
-		gomock.InOrder(
-			task1.EXPECT().Run(ctx, payloadMock).Return(errors.New("test error")).Times(1),
-			task1.EXPECT().Run(ctx, payloadMock).Return(nil).Times(1),
-		)
-
-		var taskValidator pipeline.TaskValidator = func(n string) bool { return true }
-		sr := pipeline.RetryingStageRunner(
-			pipeline.SyncRunner(task1),
-			func(err error) bool { return true },
-			3)
-
-		err := sr.Run(ctx, payloadMock, taskValidator)
-		if err != nil {
-			t.Errorf("should not return error")
-		}
-	})
-
-	t.Run("task returns error every try", func(t *testing.T) {
-		ctrl, ctx := gomock.WithContext(context.Background(), t)
-		defer ctrl.Finish()
-
-		payloadMock := mock.NewMockPayload(ctrl)
-
-		task1 := mock.NewMockTask(ctrl)
-		task1.EXPECT().GetName().Return("task1").Times(3)
-		task1.EXPECT().Run(ctx, payloadMock).Return(errors.New("test error")).Times(3)
-
-		var taskValidator pipeline.TaskValidator = func(n string) bool { return true }
-		sr := pipeline.RetryingStageRunner(
-			pipeline.SyncRunner(task1),
-			func(err error) bool { return true },
-			3)
-
-		err := sr.Run(ctx, payloadMock, taskValidator)
+		err := s.Run(ctx, payloadMock, nil)
 		if err == nil {
 			t.Errorf("should return error")
 		}

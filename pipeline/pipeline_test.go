@@ -561,3 +561,82 @@ func TestPipeline_StagesBlacklist(t *testing.T) {
 		}
 	})
 }
+
+func TestPipeline_RetryStage(t *testing.T) {
+	t.Run("tasks return success", func(t *testing.T) {
+		ctrl, ctx := gomock.WithContext(context.Background(), t)
+		defer ctrl.Finish()
+
+		payloadFactoryMock := mock.NewMockPayloadFactory(ctrl)
+		payloadFactoryMock.EXPECT().GetPayload(gomock.Any()).Return(&payloadMock{}).Times(1)
+
+		p := pipeline.NewCustom(payloadFactoryMock)
+
+		task1 := mock.NewMockTask(ctrl)
+		task2 := mock.NewMockTask(ctrl)
+
+		task1.EXPECT().GetName().Return("task1").Times(1)
+		task2.EXPECT().GetName().Return("task2").Times(1)
+
+		gomock.InOrder(
+			task1.EXPECT().Run(gomock.Any(), gomock.Any()).Return(nil).Times(1),
+			task2.EXPECT().Run(gomock.Any(), gomock.Any()).Return(nil).Times(1),
+		)
+
+		p.AddStage(pipeline.NewStage("test_stage", task1, task2))
+		p.RetryStage("test_stage", func(err error) bool { return true },
+			3)
+
+		if _, err := p.Run(ctx, 1, nil); err != nil {
+			t.Errorf("should not return error")
+		}
+	})
+
+	t.Run("task returns error then success", func(t *testing.T) {
+		ctrl, ctx := gomock.WithContext(context.Background(), t)
+		defer ctrl.Finish()
+
+		payloadFactoryMock := mock.NewMockPayloadFactory(ctrl)
+		payloadFactoryMock.EXPECT().GetPayload(gomock.Any()).Return(&payloadMock{}).Times(1)
+
+		p := pipeline.NewCustom(payloadFactoryMock)
+
+		task1 := mock.NewMockTask(ctrl)
+		task1.EXPECT().GetName().Return("task1").Times(2)
+
+		gomock.InOrder(
+			task1.EXPECT().Run(gomock.Any(), gomock.Any()).Return(errors.New("test err")).Times(1),
+			task1.EXPECT().Run(gomock.Any(), gomock.Any()).Return(nil).Times(1),
+		)
+
+		p.AddStage(pipeline.NewStage("test_stage", task1))
+		p.RetryStage("test_stage", func(err error) bool { return true },
+			3)
+
+		if _, err := p.Run(ctx, 1, nil); err != nil {
+			t.Errorf("should not return error")
+		}
+	})
+
+	t.Run("task returns error every try", func(t *testing.T) {
+		ctrl, ctx := gomock.WithContext(context.Background(), t)
+		defer ctrl.Finish()
+
+		payloadFactoryMock := mock.NewMockPayloadFactory(ctrl)
+		payloadFactoryMock.EXPECT().GetPayload(gomock.Any()).Return(&payloadMock{}).Times(1)
+
+		p := pipeline.NewCustom(payloadFactoryMock)
+
+		task1 := mock.NewMockTask(ctrl)
+		task1.EXPECT().GetName().Return("task1").Times(3)
+		task1.EXPECT().Run(gomock.Any(), gomock.Any()).Return(errors.New("test error")).Times(3)
+
+		p.AddStage(pipeline.NewStage("test_stage", task1))
+		p.RetryStage("test_stage", func(err error) bool { return true },
+			3)
+
+		if _, err := p.Run(ctx, 1, nil); err == nil {
+			t.Errorf("should return error")
+		}
+	})
+}
