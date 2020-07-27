@@ -141,37 +141,29 @@ func (p *pipeline) SetLogger(l Logger) {
 
 // SetAsyncTasks adds tasks which will run concurrently in a given stage
 func (p *pipeline) SetAsyncTasks(stageName StageName, tasks ...Task) {
+	p.setRunnerForStage(stageName, asyncRunner{tasks: tasks})
+}
+
+// SetTasks adds tasks which will run one by one in a given stage
+func (p *pipeline) SetTasks(stageName StageName, tasks ...Task) {
+	p.setRunnerForStage(stageName, syncRunner{tasks: tasks})
+}
+
+// SetCustomStage sets custom stage runner for a given stage
+func (p *pipeline) SetCustomStage(stageName StageName, runner stageRunner) {
+	p.setRunnerForStage(stageName, runner)
+}
+
+func (p *pipeline) setRunnerForStage(stageName StageName, runner stageRunner) {
 	for _, stages := range p.stages {
 		for _, s := range stages {
 			if s.Name == stageName {
-				s.runner = asyncRunner{tasks: tasks}
+				s.runner = runner
 				return
 			}
 		}
 	}
 	logInfo(fmt.Sprintf("cannot set stage runner for stage, stage '%v' not found on pipeline", stageName))
-}
-
-// SetTasks adds tasks which will run one by one in a given stage
-func (p *pipeline) SetTasks(stageName StageName, tasks ...Task) {
-	for _, stages := range p.stages {
-		for _, s := range stages {
-			if s.Name == stageName {
-				s.runner = syncRunner{tasks: tasks}
-			}
-		}
-	}
-}
-
-// SetCustomStage sets custom stage runner for a given stage
-func (p *pipeline) SetCustomStage(stageName StageName, runner stageRunner) {
-	for _, stages := range p.stages {
-		for _, s := range stages {
-			if s.Name == stageName {
-				s.runner = runner
-			}
-		}
-	}
 }
 
 // AddConcurrentStages adds stages that will run concurrently in the pipeline
