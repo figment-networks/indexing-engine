@@ -44,23 +44,34 @@ To create a new default pipeline use:
 NewDefault([payloadFactory])
 ```
 
-### Setting up runners in stages
-In order to set a runner for a specific stage you can use:
+### Setting up tasks in stages
+In order to set tasks for a specific stage you can use:
 ```shell script
-p.SetStageRunner(
+p.SetTasks(
   [Name of the stage],
-  pipeline.SyncRunner(NewTask()),
+  NewTask(),
+  NewTask(),
 )
 ```
 
-As a parameter to `p.SetStageRunner` function you pass in stage name and StageRunner instance.
-StageRunner is responsible for running individual tasks inside of the stage.
-This package provides 2 types of StageRunners:
-1. `SyncRunner` - executes tasks one by one
-2. `AsyncRunner` - executes tasks concurrently
+To set tasks that will run at the same time, use:
+```shell script
+p.SetAsyncTasks(
+  [Name of the stage],
+  NewTask(),
+  NewTask(),
+)
+```
 
-If you want to use your own method of running task inside of stage, you can easily
-create your own implementation of `StageRunner`.
+If you want to use your own method of running task inside of a stage, you can easily create your own implementation of a `StageRunnerFunc` and pass it to `SetCustomStage`.
+
+```shell script
+p.SetCustomStage(
+  [Name of the stage],
+  [custom Stagerunnerfunc]
+)
+```
+
 
 ### Starting pipeline
 Once stages are setup, we can run our pipeline
@@ -94,33 +105,35 @@ afterFetcherFunc := pipeline.StageRunnerFunc(func(ctx context.Context, p pipelin
     return nil
 })
 
-p.AddStageBefore(pipeline.StageFetcher, CustomStageName, afterFetcherFunc)
+p.AddStageAfter(
+  pipeline.StageFetcher,
+  pipeline.NewCustomStage(CustomStageName, afterFetcherFunc)
+)
 ```
 
 
  ### Retrying
  github.com/figment-networks/indexing-engine provides 2 types of retrying mechanisms:
- * `RetryingStageRunner` - which is responsible for retrying the entire stage if error occurred
+ * `RetryStage` - which is responsible for retrying the entire stage if error occurred
  * `RetryingTask` - which is responsible for retrying individual tasks if it return error
 
  In order to implement retrying mechanism you need to wrap stage or task with above functions.
  Here is an example of use of `RetryingTask`:
  ```go
-p.SetFetcherStage(
-    pipeline.AsyncRunner(
-        pipeline.RetryingTask(NewFetcherTask(), func(err error) bool {
-            // Make error always transient for simplicity
-            return true
-        }, 3),
-    ),
+p.SetTasks(
+  pipeline.StageFetcher,
+  pipeline.RetryingTask(NewFetcherTask(), func(err error) bool {
+      // Make error always transient for simplicity
+      return true
+  }, 3),
 )
-``` 
+```
 
 ### Selective execution
 Indexing engine provides you with options to run stages and individual tasks selectively.
 You have 2 options you can use for this purpose:
 * `StagesBlacklist` - list of stages to NOT execute
-* `TasksWhitelist` - list of indexing tasks to execute 
+* `TasksWhitelist` - list of indexing tasks to execute
 
 In order to use above options you have to use `setOptions` method of pipeline like so:
 ```go
@@ -141,12 +154,16 @@ p := pipeline.NewCustom(payloadFactory)
 This creates a pipeline with no set stages. To add a stage, run:
 
 ```go
-
 p.AddStage(
-  [Name of the stage],
-  pipeline.SyncRunner(NewTask()),
+  pipeline.NewStage([Name of the stage],  NewTask())
 )
+```
 
+To add a stage where tasks will run concurrently, run:
+```go
+p.AddStage(
+  pipeline.NewAsyncStage([Name of the stage],  NewTask1(), NewTask2())
+)
 ```
 
 The order in which the stages will run is determined by the order in which they are added.
@@ -156,15 +173,17 @@ If you want to run stages concurrently, add them together using `AddConcurrentSt
 
 ```go
 p.AddConcurrentStages(
-  pipeline.NewStage(pipeline.StageAggregator,pipeline.SyncRunner(NewTask())),
-  pipeline.NewStage(pipeline.StageSequencer,pipeline.SyncRunner(NewTask())),
+  pipeline.NewStage(pipeline.StageAggregator, NewTask())
+  pipeline.NewStage(pipeline.StageSequencer, NewTask())
 )
 ```
 
 ## Examples
-In `/examples` folder you can find an example of a pipeline. To run it use:
+In `/examples` folder you can find an examples of pipelines. To run use:
 ```shell script
-go run example/main.go
+go run example/default/main.go
+
+go run example/custom/main.go
 ```
 
 ## To-Dos:
