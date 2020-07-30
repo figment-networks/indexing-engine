@@ -11,11 +11,11 @@ const (
 )
 
 func StartPipeline() error {
-	p := pipeline.New(NewPayloadFactory())
+	p := pipeline.NewDefault(NewPayloadFactory())
 
 	// Set fetcher stage
 	// Demonstrates use of retrying mechanism for tasks inside the stage
-	p.SetStage(
+	p.SetStageRunner(
 		pipeline.StageFetcher,
 		pipeline.AsyncRunner(
 			pipeline.RetryingTask(NewFetcherTask(), func(err error) bool {
@@ -26,14 +26,14 @@ func StartPipeline() error {
 	)
 
 	// Set parser stage
-	p.SetStage(pipeline.StageParser, pipeline.SyncRunner(NewParserTask()))
+	p.SetStageRunner(pipeline.StageParser, pipeline.SyncRunner(NewParserTask()))
 
 	// Set validator stage
-	p.SetStage(pipeline.StageValidator, pipeline.SyncRunner(NewValidatorTask()))
+	p.SetStageRunner(pipeline.StageValidator, pipeline.SyncRunner(NewValidatorTask()))
 
 	// Set syncer stage
 	// Demonstrates use of retrying mechanism for entire stage
-	p.SetStage(
+	p.SetStageRunner(
 		pipeline.StageSyncer,
 		pipeline.RetryingStageRunner(pipeline.SyncRunner(NewSyncerTask()), func(err error) bool {
 			// Make error always transient for simplicity
@@ -42,10 +42,10 @@ func StartPipeline() error {
 	)
 
 	// Set sequencer stage
-	p.SetStage(pipeline.StageSequencer, pipeline.AsyncRunner(NewSequencerTask()))
+	p.SetStageRunner(pipeline.StageSequencer, pipeline.AsyncRunner(NewSequencerTask()))
 
 	// Set aggregator stage
-	p.SetStage(pipeline.StageAggregator, pipeline.AsyncRunner(NewAggregatorTask()))
+	p.SetStageRunner(pipeline.StageAggregator, pipeline.AsyncRunner(NewAggregatorTask()))
 
 	// Add custom stage before existing one
 	// Demonstrates how to use func as a stage runner without a need to use structs

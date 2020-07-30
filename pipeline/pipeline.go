@@ -4,8 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/hashicorp/go-multierror"
 	"sync"
+
+	"github.com/hashicorp/go-multierror"
 )
 
 const (
@@ -42,6 +43,7 @@ const (
 
 var (
 	ErrMissingStages = errors.New("provide stages to run concurrently")
+	ErrMissingStage  = errors.New("no stage to run")
 )
 
 type StageName string
@@ -55,56 +57,126 @@ type Options struct {
 	TaskWhitelist []TaskName
 }
 
-// Pipeline implements a modular, multi-stage pipeline
-type Pipeline struct {
+type Pipeline interface {
+	AddStageBefore(existingStageName StageName, name StageName, stageRunner StageRunner)
+	AddStageAfter(existingStageName StageName, name StageName, stageRunner StageRunner)
+	Start(ctx context.Context, source Source, sink Sink, options *Options) error
+	Run(ctx context.Context, height int64, options *Options) (Payload, error)
+}
+
+// DefaultPipeline is implemented by types that want to use set stages
+type DefaultPipeline interface {
+	Pipeline
+
+	SetStageRunner(stageName StageName, stageRunner StageRunner)
+}
+
+// CustomPipeline is implemented by types that want to add custom stages
+type CustomPipeline interface {
+	Pipeline
+
+	AddStage(stageName StageName, stageRunner StageRunner)
+	AddConcurrentStages(stages ...*stage)
+}
+
+// NewDefault creates a new DefaultPipeline with default stages set in default run order
+func NewDefault(payloadFactor PayloadFactory) DefaultPipeline {
+	p := new(payloadFactor)
+
+	emptyRunner := func(name StageName) StageRunner {
+		return StageRunnerFunc(func(context.Context, Payload, TaskValidator) error {
+			logInfo(fmt.Sprintf("stage name %s not set up", name))
+			return nil
+		})
+	}
+
+	p.AddStage(StageSetup, emptyRunner(StageSetup))
+	p.AddStage(StageSyncer, emptyRunner(StageSyncer))
+	p.AddStage(StageFetcher, emptyRunner(StageFetcher))
+	p.AddStage(StageParser, emptyRunner(StageParser))
+	p.AddStage(StageValidator, emptyRunner(StageValidator))
+	p.AddConcurrentStages(NewStage(StageSequencer, emptyRunner(StageSequencer)), NewStage(StageAggregator, emptyRunner(StageAggregator)))
+	p.AddStage(StagePersistor, emptyRunner(StagePersistor))
+	p.AddStage(StageCleanup, emptyRunner(StageCleanup))
+
+	return p
+}
+
+// NewCustom creates a new pipeline that satisfies CustomPipeline
+func NewCustom(payloadFactor PayloadFactory) CustomPipeline {
+	return new(payloadFactor)
+}
+
+// pipeline implements a modular, multi-stage pipeline
+type pipeline struct {
 	payloadFactory PayloadFactory
 	options        *Options
 
-	stages map[StageName]*stage
+	stages [][]*stage
 
 	beforeStage map[StageName][]*stage
 	afterStage  map[StageName][]*stage
 }
 
-func New(payloadFactor PayloadFactory) *Pipeline {
-	return &Pipeline{
+func new(payloadFactor PayloadFactory) *pipeline {
+	return &pipeline{
 		payloadFactory: payloadFactor,
+		stages:         [][]*stage{},
 
-		stages:      make(map[StageName]*stage),
 		beforeStage: make(map[StageName][]*stage),
 		afterStage:  make(map[StageName][]*stage),
 	}
 }
 
 // SetOptions sets pipeline options
-func (p *Pipeline) SetOptions(o *Options) {
+func (p *pipeline) SetOptions(o *Options) {
 	p.options = o
 }
 
 // SetLogger sets logger
-func (p *Pipeline) SetLogger(l Logger) {
+func (p *pipeline) SetLogger(l Logger) {
 	logger = l
 }
 
-// SetStage sets up stage runner for given stage
-func (p *Pipeline) SetStage(stageName StageName, stageRunner StageRunner) {
-	p.stages[stageName] = NewStage(stageName, stageRunner)
+// SetStageRunner sets up stagerunner for given stage
+func (p *pipeline) SetStageRunner(stageName StageName, stageRunner StageRunner) {
+	for _, stages := range p.stages {
+		for _, s := range stages {
+			if s.Name == stageName {
+				s.runner = stageRunner
+				return
+			}
+		}
+	}
+	logInfo(fmt.Sprintf("cannot set stage runner for stage, stage '%v' not found on pipeline", stageName))
+}
+
+// AddStage adds stage to pipeline
+func (p *pipeline) AddStage(stageName StageName, stageRunner StageRunner) {
+	p.stages = append(p.stages, []*stage{NewStage(stageName, stageRunner)})
+}
+
+// AddConcurrentStages adds multiple stages that will run concurrently in the pipeline
+func (p *pipeline) AddConcurrentStages(stages ...*stage) {
+	if len(stages) == 0 {
+		return
+	}
+	p.stages = append(p.stages, stages)
 }
 
 // AddStageBefore adds custom stage before existing stage
-func (p *Pipeline) AddStageBefore(existingStageName StageName, name StageName, stageRunner StageRunner) {
+func (p *pipeline) AddStageBefore(existingStageName StageName, name StageName, stageRunner StageRunner) {
 	p.beforeStage[existingStageName] = append(p.beforeStage[existingStageName], NewStage(name, stageRunner))
 }
 
 // AddStageBefore adds custom stage after existing stage
-func (p *Pipeline) AddStageAfter(existingStageName StageName, name StageName, stageRunner StageRunner) {
+func (p *pipeline) AddStageAfter(existingStageName StageName, name StageName, stageRunner StageRunner) {
 	p.afterStage[existingStageName] = append(p.afterStage[existingStageName], NewStage(name, stageRunner))
 }
 
 // Start starts the pipeline
-func (p *Pipeline) Start(ctx context.Context, source Source, sink Sink, options *Options) error {
+func (p *pipeline) Start(ctx context.Context, source Source, sink Sink, options *Options) error {
 	pCtx, _ := p.setupCtx(ctx)
-
 	p.options = options
 
 	var pipelineErr error
@@ -137,7 +209,7 @@ func (p *Pipeline) Start(ctx context.Context, source Source, sink Sink, options 
 }
 
 // Run run one-off pipeline iteration for given height
-func (p *Pipeline) Run(ctx context.Context, height int64, options *Options) (Payload, error) {
+func (p *pipeline) Run(ctx context.Context, height int64, options *Options) (Payload, error) {
 	pCtx, _ := p.setupCtx(ctx)
 
 	p.options = options
@@ -154,7 +226,7 @@ func (p *Pipeline) Run(ctx context.Context, height int64, options *Options) (Pay
 }
 
 // setupCtx sets up the context
-func (p *Pipeline) setupCtx(ctx context.Context) (context.Context, context.CancelFunc) {
+func (p *pipeline) setupCtx(ctx context.Context) (context.Context, context.CancelFunc) {
 	// Setup cancel
 	pCtx, cancelFunc := context.WithCancel(ctx)
 
@@ -166,47 +238,26 @@ func (p *Pipeline) setupCtx(ctx context.Context) (context.Context, context.Cance
 }
 
 // runStages runs all the stages
-func (p *Pipeline) runStages(ctx context.Context, payload Payload) error {
-	if err := p.runStage(StageSetup, ctx, payload); err != nil {
-		return err
-	}
-
-	if err := p.runStage(StageSyncer, ctx, payload); err != nil {
-		return err
-	}
-
-	if err := p.runStage(StageFetcher, ctx, payload); err != nil {
-		return err
-	}
-
-	if err := p.runStage(StageParser, ctx, payload); err != nil {
-		return err
-	}
-
-	if err := p.runStage(StageValidator, ctx, payload); err != nil {
-		return err
-	}
-
-	if err := p.runStagesConcurrently(ctx, payload, []StageName{
-		StageSequencer,
-		StageAggregator,
-	}); err != nil {
-		return err
-	}
-
-	if err := p.runStage(StagePersistor, ctx, payload); err != nil {
-		return err
-	}
-
-	if err := p.runStage(StageCleanup, ctx, payload); err != nil {
-		return err
+func (p *pipeline) runStages(ctx context.Context, payload Payload) error {
+	for _, stages := range p.stages {
+		if len(stages) == 1 {
+			if err := p.runStage(ctx, stages[0], payload); err != nil {
+				return err
+			}
+		} else if len(stages) > 1 {
+			if err := p.runStagesConcurrently(ctx, payload, stages); err != nil {
+				return err
+			}
+		} else {
+			logInfo("no stages to run")
+		}
 	}
 
 	return nil
 }
 
 // runStagesConcurrently runs indexing stages concurrently
-func (p *Pipeline) runStagesConcurrently(ctx context.Context, payload Payload, stages []StageName) error {
+func (p *pipeline) runStagesConcurrently(ctx context.Context, payload Payload, stages []*stage) error {
 	stagesCount := len(stages)
 	if stagesCount == 0 {
 		return ErrMissingStages
@@ -217,13 +268,13 @@ func (p *Pipeline) runStagesConcurrently(ctx context.Context, payload Payload, s
 	errCh := make(chan error, stagesCount)
 	wg.Add(stagesCount)
 
-	for _, stageName := range stages {
-		go func(stageName StageName) {
-			if err := p.runStage(stageName, ctx, payload); err != nil {
+	for _, s := range stages {
+		go func(stage *stage) {
+			if err := p.runStage(ctx, stage, payload); err != nil {
 				errCh <- err
 			}
 			wg.Done()
-		}(stageName)
+		}(s)
 	}
 
 	go func() {
@@ -238,9 +289,13 @@ func (p *Pipeline) runStagesConcurrently(ctx context.Context, payload Payload, s
 }
 
 // runStage executes stage runner for given stage
-func (p *Pipeline) runStage(stageName StageName, ctx context.Context, payload Payload) error {
-	if p.canRunStage(stageName) {
-		before := p.beforeStage[stageName]
+func (p *pipeline) runStage(ctx context.Context, stage *stage, payload Payload) error {
+	if stage == nil {
+		return ErrMissingStage
+	}
+
+	if p.canRunStage(stage.Name) {
+		before := p.beforeStage[stage.Name]
 		if len(before) > 0 {
 			for _, s := range before {
 				if err := s.Run(ctx, payload, p.options); err != nil {
@@ -249,11 +304,11 @@ func (p *Pipeline) runStage(stageName StageName, ctx context.Context, payload Pa
 			}
 		}
 
-		if err := p.stages[stageName].Run(ctx, payload, p.options); err != nil {
+		if err := stage.Run(ctx, payload, p.options); err != nil {
 			return err
 		}
 
-		after := p.afterStage[stageName]
+		after := p.afterStage[stage.Name]
 		if len(after) > 0 {
 			for _, s := range after {
 				if err := s.Run(ctx, payload, p.options); err != nil {
@@ -266,20 +321,13 @@ func (p *Pipeline) runStage(stageName StageName, ctx context.Context, payload Pa
 }
 
 // canRunStage determines if stage can be ran
-func (p *Pipeline) canRunStage(stageName StageName) bool {
-	_, ok := p.stages[stageName]
-	if !ok {
-		logInfo(fmt.Sprintf("stage name %s not set up", stageName))
-		return false
-	}
-
+func (p *pipeline) canRunStage(stageName StageName) bool {
 	if p.options != nil && len(p.options.StagesBlacklist) > 0 {
 		for _, s := range p.options.StagesBlacklist {
 			if s == stageName {
 				return false
 			}
 		}
-		return true
 	}
 
 	return true

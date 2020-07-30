@@ -39,7 +39,7 @@ type sourceMock struct {
 	currentHeight int64
 }
 
-func(s *sourceMock) Next(context.Context, pipeline.Payload) bool {
+func (s *sourceMock) Next(context.Context, pipeline.Payload) bool {
 	if s.currentHeight == s.endHeight {
 		return false
 	}
@@ -47,10 +47,9 @@ func(s *sourceMock) Next(context.Context, pipeline.Payload) bool {
 	return true
 }
 
-func(s *sourceMock) Current() int64 {
+func (s *sourceMock) Current() int64 {
 	return s.currentHeight
 }
-
 
 func (s *sourceMock) Err() error {
 	return nil
@@ -64,7 +63,7 @@ func TestPipeline_SetStages(t *testing.T) {
 		payloadFactoryMock := mock.NewMockPayloadFactory(ctrl)
 		payloadFactoryMock.EXPECT().GetPayload(gomock.Any()).Return(&payloadMock{}).Times(2)
 
-		p := pipeline.New(payloadFactoryMock)
+		p := pipeline.NewDefault(payloadFactoryMock)
 
 		setupTaskMock := mock.NewMockTask(ctrl)
 		fetcherTaskMock := mock.NewMockTask(ctrl)
@@ -84,14 +83,14 @@ func TestPipeline_SetStages(t *testing.T) {
 		aggregatorTaskMock.EXPECT().GetName().Return("aggregatorTask").Times(2)
 		cleanupTaskMock.EXPECT().GetName().Return("cleanupTask").Times(2)
 
-		p.SetStage(pipeline.StageSetup, pipeline.SyncRunner(setupTaskMock))
-		p.SetStage(pipeline.StageFetcher, pipeline.SyncRunner(fetcherTaskMock))
-		p.SetStage(pipeline.StageParser, pipeline.SyncRunner(parserTaskMock))
-		p.SetStage(pipeline.StageValidator, pipeline.SyncRunner(validatorTaskMock))
-		p.SetStage(pipeline.StageSyncer, pipeline.SyncRunner(syncerTaskMock))
-		p.SetStage(pipeline.StageSequencer, pipeline.SyncRunner(sequencerTaskMock))
-		p.SetStage(pipeline.StageAggregator, pipeline.SyncRunner(aggregatorTaskMock))
-		p.SetStage(pipeline.StageCleanup, pipeline.SyncRunner(cleanupTaskMock))
+		p.SetStageRunner(pipeline.StageSetup, pipeline.SyncRunner(setupTaskMock))
+		p.SetStageRunner(pipeline.StageFetcher, pipeline.SyncRunner(fetcherTaskMock))
+		p.SetStageRunner(pipeline.StageParser, pipeline.SyncRunner(parserTaskMock))
+		p.SetStageRunner(pipeline.StageValidator, pipeline.SyncRunner(validatorTaskMock))
+		p.SetStageRunner(pipeline.StageSyncer, pipeline.SyncRunner(syncerTaskMock))
+		p.SetStageRunner(pipeline.StageSequencer, pipeline.SyncRunner(sequencerTaskMock))
+		p.SetStageRunner(pipeline.StageAggregator, pipeline.SyncRunner(aggregatorTaskMock))
+		p.SetStageRunner(pipeline.StageCleanup, pipeline.SyncRunner(cleanupTaskMock))
 
 		setupTaskMock.EXPECT().Run(gomock.Any(), gomock.Any()).Return(nil).Times(2)
 
@@ -123,6 +122,117 @@ func TestPipeline_SetStages(t *testing.T) {
 func TestPipeline_Start(t *testing.T) {
 	stageErr := errors.New("err")
 
+	t.Run("pipeline runs stages in default order when running all stages", func(t *testing.T) {
+		ctrl, ctx := gomock.WithContext(context.Background(), t)
+		defer ctrl.Finish()
+
+		payloadFactoryMock := mock.NewMockPayloadFactory(ctrl)
+		payloadFactoryMock.EXPECT().GetPayload(gomock.Any()).Return(&payloadMock{}).Times(1)
+
+		p := pipeline.NewDefault(payloadFactoryMock)
+
+		setupTaskMock := mock.NewMockTask(ctrl)
+		fetcherTaskMock := mock.NewMockTask(ctrl)
+		parserTaskMock := mock.NewMockTask(ctrl)
+		validatorTaskMock := mock.NewMockTask(ctrl)
+		syncerTaskMock := mock.NewMockTask(ctrl)
+		sequencerTaskMock := mock.NewMockTask(ctrl)
+		aggregatorTaskMock := mock.NewMockTask(ctrl)
+		persistorTaskMock := mock.NewMockTask(ctrl)
+		cleanupTaskMock := mock.NewMockTask(ctrl)
+
+		setupTaskMock.EXPECT().GetName().Return("setupTask").Times(1)
+		fetcherTaskMock.EXPECT().GetName().Return("fetcherTask").Times(1)
+		parserTaskMock.EXPECT().GetName().Return("parserTask").Times(1)
+		validatorTaskMock.EXPECT().GetName().Return("validatorTask").Times(1)
+		syncerTaskMock.EXPECT().GetName().Return("syncerTask").Times(1)
+		sequencerTaskMock.EXPECT().GetName().Return("sequencerTask").Times(1)
+		aggregatorTaskMock.EXPECT().GetName().Return("aggregatorTask").Times(1)
+		persistorTaskMock.EXPECT().GetName().Return("aggregatorTask").Times(1)
+		cleanupTaskMock.EXPECT().GetName().Return("cleanupTask").Times(1)
+
+		p.SetStageRunner(pipeline.StageSetup, pipeline.SyncRunner(setupTaskMock))
+		p.SetStageRunner(pipeline.StageFetcher, pipeline.SyncRunner(fetcherTaskMock))
+		p.SetStageRunner(pipeline.StageParser, pipeline.SyncRunner(parserTaskMock))
+		p.SetStageRunner(pipeline.StageValidator, pipeline.SyncRunner(validatorTaskMock))
+		p.SetStageRunner(pipeline.StageSyncer, pipeline.SyncRunner(syncerTaskMock))
+		p.SetStageRunner(pipeline.StageSequencer, pipeline.SyncRunner(sequencerTaskMock))
+		p.SetStageRunner(pipeline.StageAggregator, pipeline.SyncRunner(aggregatorTaskMock))
+		p.SetStageRunner(pipeline.StagePersistor, pipeline.SyncRunner(persistorTaskMock))
+		p.SetStageRunner(pipeline.StageCleanup, pipeline.SyncRunner(cleanupTaskMock))
+		sinkMock := mock.NewMockSink(ctrl)
+
+		runSetup := setupTaskMock.EXPECT().Run(gomock.Any(), gomock.Any()).Return(nil)
+		runSyncer := syncerTaskMock.EXPECT().Run(gomock.Any(), gomock.Any()).Return(nil).Times(1)
+		runFetcher := fetcherTaskMock.EXPECT().Run(gomock.Any(), gomock.Any()).Return(nil).Times(1)
+		runParser := parserTaskMock.EXPECT().Run(gomock.Any(), gomock.Any()).Return(nil).Times(1)
+		runValidator := validatorTaskMock.EXPECT().Run(gomock.Any(), gomock.Any()).Return(nil).Times(1)
+		runSequencer := sequencerTaskMock.EXPECT().Run(gomock.Any(), gomock.Any()).Return(nil).Times(1)
+		runAggregator := aggregatorTaskMock.EXPECT().Run(gomock.Any(), gomock.Any()).Return(nil).Times(1)
+		runPersistor := persistorTaskMock.EXPECT().Run(gomock.Any(), gomock.Any()).Return(nil).Times(1)
+		runCleanup := cleanupTaskMock.EXPECT().Run(gomock.Any(), gomock.Any()).Return(nil).Times(1)
+
+		runSetup.Times(1)
+		runSyncer.After(runSetup)
+		runFetcher.After(runSyncer)
+		runParser.After(runFetcher)
+		runValidator.After(runParser)
+
+		runSequencer.After(runValidator)
+		runAggregator.After(runValidator)
+
+		runPersistor.After(runSequencer)
+		runPersistor.After(runAggregator)
+		runCleanup.After(runPersistor)
+
+		sinkMock.EXPECT().Consume(gomock.Any(), gomock.Any()).Return(nil).Times(1).After(runCleanup)
+		options := &pipeline.Options{}
+
+		if err := p.Start(ctx, &sourceMock{1, 1, 1}, sinkMock, options); err != nil {
+			t.Errorf("did not expect error")
+		}
+	})
+
+	t.Run("pipeline runs stages in default order when running some stages", func(t *testing.T) {
+		ctrl, ctx := gomock.WithContext(context.Background(), t)
+		defer ctrl.Finish()
+
+		payloadFactoryMock := mock.NewMockPayloadFactory(ctrl)
+		payloadFactoryMock.EXPECT().GetPayload(gomock.Any()).Return(&payloadMock{}).Times(1)
+
+		p := pipeline.NewDefault(payloadFactoryMock)
+
+		setupTaskMock := mock.NewMockTask(ctrl)
+		parserTaskMock := mock.NewMockTask(ctrl)
+		syncerTaskMock := mock.NewMockTask(ctrl)
+		cleanupTaskMock := mock.NewMockTask(ctrl)
+
+		setupTaskMock.EXPECT().GetName().Return("setupTask").Times(1)
+		parserTaskMock.EXPECT().GetName().Return("parserTask").Times(1)
+		syncerTaskMock.EXPECT().GetName().Return("syncerTask").Times(1)
+		cleanupTaskMock.EXPECT().GetName().Return("cleanupTask").Times(1)
+
+		p.SetStageRunner(pipeline.StageSetup, pipeline.SyncRunner(setupTaskMock))
+		p.SetStageRunner(pipeline.StageParser, pipeline.SyncRunner(parserTaskMock))
+		p.SetStageRunner(pipeline.StageSyncer, pipeline.SyncRunner(syncerTaskMock))
+		p.SetStageRunner(pipeline.StageCleanup, pipeline.SyncRunner(cleanupTaskMock))
+		sinkMock := mock.NewMockSink(ctrl)
+
+		gomock.InOrder(
+			setupTaskMock.EXPECT().Run(gomock.Any(), gomock.Any()).Return(nil).Times(1),
+			syncerTaskMock.EXPECT().Run(gomock.Any(), gomock.Any()).Return(nil).Times(1),
+			parserTaskMock.EXPECT().Run(gomock.Any(), gomock.Any()).Return(nil).Times(1),
+			cleanupTaskMock.EXPECT().Run(gomock.Any(), gomock.Any()).Return(nil).Times(1),
+			sinkMock.EXPECT().Consume(gomock.Any(), gomock.Any()).Return(nil).Times(1),
+		)
+
+		options := &pipeline.Options{}
+
+		if err := p.Start(ctx, &sourceMock{1, 1, 1}, sinkMock, options); err != nil {
+			t.Errorf("did not expect error")
+		}
+	})
+
 	t.Run("pipeline returns error if syncing stage errors", func(t *testing.T) {
 		for _, stageWithErr := range [...]pipeline.StageName{
 			pipeline.StageSetup,
@@ -140,7 +250,7 @@ func TestPipeline_Start(t *testing.T) {
 			payloadFactoryMock := mock.NewMockPayloadFactory(ctrl)
 			payloadFactoryMock.EXPECT().GetPayload(gomock.Any()).Return(&payloadMock{}).Times(1)
 
-			p := pipeline.New(payloadFactoryMock)
+			p := pipeline.NewDefault(payloadFactoryMock)
 
 			shouldRun := true
 			for _, stage := range allStages {
@@ -150,7 +260,7 @@ func TestPipeline_Start(t *testing.T) {
 				if !shouldRun {
 					mockTask.EXPECT().GetName().Return("mockTask").Times(0)
 					mockTask.EXPECT().Run(gomock.Any(), gomock.Any()).Return(nil).Times(0)
-					p.SetStage(stage, pipeline.SyncRunner(mockTask))
+					p.SetStageRunner(stage, pipeline.SyncRunner(mockTask))
 					continue
 				}
 
@@ -161,7 +271,7 @@ func TestPipeline_Start(t *testing.T) {
 
 				mockTask.EXPECT().GetName().Return("mockTask").Times(1)
 				mockTask.EXPECT().Run(gomock.Any(), gomock.Any()).Return(returnVal).Times(1)
-				p.SetStage(stage, pipeline.SyncRunner(mockTask))
+				p.SetStageRunner(stage, pipeline.SyncRunner(mockTask))
 			}
 
 			sinkMock := mock.NewMockSink(ctrl)
@@ -182,22 +292,22 @@ func TestPipeline_Start(t *testing.T) {
 		payloadFactoryMock := mock.NewMockPayloadFactory(ctrl)
 		payloadFactoryMock.EXPECT().GetPayload(gomock.Any()).Return(&payloadMock{}).Times(1)
 
-		p := pipeline.New(payloadFactoryMock)
+		p := pipeline.NewDefault(payloadFactoryMock)
 
 		aggregatorTask := mock.NewMockTask(ctrl)
 		aggregatorTask.EXPECT().GetName().Return("aggregatorTask").Times(1)
 		aggregatorTask.EXPECT().Run(gomock.Any(), gomock.Any()).Return(stageErr).Times(1)
-		p.SetStage(pipeline.StageAggregator, pipeline.SyncRunner(aggregatorTask))
+		p.SetStageRunner(pipeline.StageAggregator, pipeline.SyncRunner(aggregatorTask))
 
 		sequencerTask := mock.NewMockTask(ctrl)
 		sequencerTask.EXPECT().GetName().Return("sequencerTask").Times(1)
 		sequencerTask.EXPECT().Run(gomock.Any(), gomock.Any()).Return(nil).Times(1)
-		p.SetStage(pipeline.StageSequencer, pipeline.SyncRunner(sequencerTask))
+		p.SetStageRunner(pipeline.StageSequencer, pipeline.SyncRunner(sequencerTask))
 
 		cleanupTask := mock.NewMockTask(ctrl)
 		cleanupTask.EXPECT().GetName().Return("cleanupTask").Times(0)
 		cleanupTask.EXPECT().Run(gomock.Any(), gomock.Any()).Return(nil).Times(0)
-		p.SetStage(pipeline.StageCleanup, pipeline.SyncRunner(cleanupTask))
+		p.SetStageRunner(pipeline.StageCleanup, pipeline.SyncRunner(cleanupTask))
 
 		sinkMock := mock.NewMockSink(ctrl)
 		sinkMock.EXPECT().Consume(gomock.Any(), gomock.Any()).Return(nil).Times(0)
@@ -210,6 +320,74 @@ func TestPipeline_Start(t *testing.T) {
 	})
 }
 
+func TestPipeline_NewCustom(t *testing.T) {
+	t.Run("custom pipeline runs stages in custom order", func(t *testing.T) {
+		ctrl, ctx := gomock.WithContext(context.Background(), t)
+		defer ctrl.Finish()
+
+		payloadFactoryMock := mock.NewMockPayloadFactory(ctrl)
+		payloadFactoryMock.EXPECT().GetPayload(gomock.Any()).Return(&payloadMock{}).Times(1)
+
+		p := pipeline.NewCustom(payloadFactoryMock)
+
+		runCalls := []*gomock.Call{}
+
+		for _, stage := range []pipeline.StageName{
+			pipeline.StageParser, pipeline.StageAggregator, pipeline.StageSetup,
+		} {
+			mockTask := mock.NewMockTask(ctrl)
+			mockTask.EXPECT().GetName().Return("mockTask").Times(1)
+
+			call := mockTask.EXPECT().Run(gomock.Any(), gomock.Any()).Return(nil).Times(1)
+			runCalls = append(runCalls, call)
+
+			p.AddStage(stage, pipeline.SyncRunner(mockTask))
+		}
+
+		sinkMock := mock.NewMockSink(ctrl)
+		runCalls = append(runCalls,
+			sinkMock.EXPECT().Consume(gomock.Any(), gomock.Any()).Return(nil).Times(1))
+
+		gomock.InOrder(runCalls...)
+
+		if err := p.Start(ctx, &sourceMock{1, 1, 1}, sinkMock, nil); err != nil {
+			t.Errorf("did not expect error")
+		}
+	})
+
+	t.Run("custom pipeline runs tasks in concurrent stages", func(t *testing.T) {
+		ctrl, ctx := gomock.WithContext(context.Background(), t)
+		defer ctrl.Finish()
+
+		payloadFactoryMock := mock.NewMockPayloadFactory(ctrl)
+		payloadFactoryMock.EXPECT().GetPayload(gomock.Any()).Return(&payloadMock{}).Times(1)
+
+		p := pipeline.NewCustom(payloadFactoryMock)
+
+		mockTasks := make([]pipeline.Task, 3)
+
+		for i := 0; i < 3; i++ {
+			mockTask := mock.NewMockTask(ctrl)
+			mockTask.EXPECT().GetName().Return("mockTask").Times(1)
+			mockTask.EXPECT().Run(gomock.Any(), gomock.Any()).Return(nil).Times(1)
+			mockTasks[i] = mockTask
+		}
+
+		p.AddConcurrentStages(
+			pipeline.NewStage(pipeline.StageCleanup, pipeline.SyncRunner(mockTasks[0])),
+			pipeline.NewStage(pipeline.StageParser, pipeline.SyncRunner(mockTasks[1])),
+			pipeline.NewStage(pipeline.StageSetup, pipeline.SyncRunner(mockTasks[2])),
+		)
+
+		sinkMock := mock.NewMockSink(ctrl)
+		sinkMock.EXPECT().Consume(gomock.Any(), gomock.Any()).Return(nil).Times(1)
+
+		if err := p.Start(ctx, &sourceMock{1, 1, 1}, sinkMock, nil); err != nil {
+			t.Errorf("did not expect error")
+		}
+	})
+}
+
 func TestPipeline_AddStageBefore(t *testing.T) {
 	t.Run("new stage is executed before given stage", func(t *testing.T) {
 		ctrl, ctx := gomock.WithContext(context.Background(), t)
@@ -218,7 +396,7 @@ func TestPipeline_AddStageBefore(t *testing.T) {
 		payloadFactoryMock := mock.NewMockPayloadFactory(ctrl)
 		payloadFactoryMock.EXPECT().GetPayload(gomock.Any()).Return(&payloadMock{}).Times(1)
 
-		p := pipeline.New(payloadFactoryMock)
+		p := pipeline.NewDefault(payloadFactoryMock)
 
 		stages := []struct {
 			name         pipeline.StageName
@@ -233,7 +411,7 @@ func TestPipeline_AddStageBefore(t *testing.T) {
 		for _, stage := range stages {
 			existingStageTask := mock.NewMockTask(ctrl)
 			existingStageTask.EXPECT().GetName().Return("mockTask").Times(1)
-			p.SetStage(stage.existingName, pipeline.SyncRunner(existingStageTask))
+			p.SetStageRunner(stage.existingName, pipeline.SyncRunner(existingStageTask))
 
 			beforeTask := mock.NewMockTask(ctrl)
 			beforeTask.EXPECT().GetName().Return("mockTask").Times(1)
@@ -260,7 +438,7 @@ func TestPipeline_AddStageBefore(t *testing.T) {
 		payloadFactoryMock := mock.NewMockPayloadFactory(ctrl)
 		payloadFactoryMock.EXPECT().GetPayload(gomock.Any()).Return(&payloadMock{}).Times(1)
 
-		p := pipeline.New(payloadFactoryMock)
+		p := pipeline.NewDefault(payloadFactoryMock)
 
 		beforeTask := mock.NewMockTask(ctrl)
 		beforeTask.EXPECT().GetName().Return("mockTask").Times(1)
@@ -270,7 +448,7 @@ func TestPipeline_AddStageBefore(t *testing.T) {
 		existingStageTask := mock.NewMockTask(ctrl)
 		existingStageTask.EXPECT().GetName().Return("mockTask").Times(0)
 		existingStageTask.EXPECT().Run(gomock.Any(), gomock.Any()).Return(nil).Times(0)
-		p.SetStage(pipeline.StageFetcher, pipeline.SyncRunner(existingStageTask))
+		p.SetStageRunner(pipeline.StageFetcher, pipeline.SyncRunner(existingStageTask))
 
 		options := &pipeline.Options{}
 
@@ -288,7 +466,7 @@ func TestPipeline_AddStageAfter(t *testing.T) {
 		payloadFactoryMock := mock.NewMockPayloadFactory(ctrl)
 		payloadFactoryMock.EXPECT().GetPayload(gomock.Any()).Return(&payloadMock{}).Times(1)
 
-		p := pipeline.New(payloadFactoryMock)
+		p := pipeline.NewDefault(payloadFactoryMock)
 
 		stages := []struct {
 			name         pipeline.StageName
@@ -303,7 +481,7 @@ func TestPipeline_AddStageAfter(t *testing.T) {
 		for _, stage := range stages {
 			existingStageTask := mock.NewMockTask(ctrl)
 			existingStageTask.EXPECT().GetName().Return("mockTask").Times(1)
-			p.SetStage(stage.existingName, pipeline.SyncRunner(existingStageTask))
+			p.SetStageRunner(stage.existingName, pipeline.SyncRunner(existingStageTask))
 
 			afterTask := mock.NewMockTask(ctrl)
 			afterTask.EXPECT().GetName().Return("mockTask").Times(1)
@@ -330,7 +508,7 @@ func TestPipeline_AddStageAfter(t *testing.T) {
 		payloadFactoryMock := mock.NewMockPayloadFactory(ctrl)
 		payloadFactoryMock.EXPECT().GetPayload(gomock.Any()).Return(&payloadMock{}).Times(1)
 
-		p := pipeline.New(payloadFactoryMock)
+		p := pipeline.NewDefault(payloadFactoryMock)
 
 		afterTask := mock.NewMockTask(ctrl)
 		afterTask.EXPECT().GetName().Return("mockTask").Times(1)
@@ -340,7 +518,7 @@ func TestPipeline_AddStageAfter(t *testing.T) {
 		existingStageTask := mock.NewMockTask(ctrl)
 		existingStageTask.EXPECT().GetName().Return("mockTask").Times(1)
 		existingStageTask.EXPECT().Run(gomock.Any(), gomock.Any()).Return(nil).Times(1)
-		p.SetStage(pipeline.StageFetcher, pipeline.SyncRunner(existingStageTask))
+		p.SetStageRunner(pipeline.StageFetcher, pipeline.SyncRunner(existingStageTask))
 
 		options := &pipeline.Options{}
 
@@ -358,7 +536,7 @@ func TestPipeline_StagesBlacklist(t *testing.T) {
 		payloadFactoryMock := mock.NewMockPayloadFactory(ctrl)
 		payloadFactoryMock.EXPECT().GetPayload(gomock.Any()).Return(&payloadMock{}).Times(1)
 
-		p := pipeline.New(payloadFactoryMock)
+		p := pipeline.NewDefault(payloadFactoryMock)
 
 		rand.Seed(time.Now().Unix())
 		blacklistedStage := allStages[rand.Intn(len(allStages))]
@@ -374,7 +552,7 @@ func TestPipeline_StagesBlacklist(t *testing.T) {
 			mockTask := mock.NewMockTask(ctrl)
 			mockTask.EXPECT().GetName().Return("mockTask").Times(calls)
 			mockTask.EXPECT().Run(gomock.Any(), gomock.Any()).Return(nil).Times(calls)
-			p.SetStage(stage, pipeline.SyncRunner(mockTask))
+			p.SetStageRunner(stage, pipeline.SyncRunner(mockTask))
 		}
 
 		if _, err := p.Run(ctx, 1, options); err != nil {

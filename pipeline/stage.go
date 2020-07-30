@@ -13,14 +13,14 @@ var (
 
 func NewStage(name StageName, runner StageRunner) *stage {
 	return &stage{
-		Name:      name,
-		runner:    runner,
+		Name:   name,
+		runner: runner,
 	}
 }
 
 type stage struct {
-	Name      StageName
-	runner    StageRunner
+	Name   StageName
+	runner StageRunner
 }
 
 // Run runs the stage runner assigned to stage
