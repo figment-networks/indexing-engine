@@ -58,46 +58,52 @@ type Options struct {
 }
 
 type Pipeline interface {
-	AddStageBefore(existingStageName StageName, name StageName, stageRunner StageRunner)
-	AddStageAfter(existingStageName StageName, name StageName, stageRunner StageRunner)
+	AddStageBefore(existingStageName StageName, stage *stage)
+	AddStageAfter(existingStageName StageName, stage *stage)
+	RetryStage(existingStageName StageName, isTransient func(error) bool, maxRetries int)
 	Start(ctx context.Context, source Source, sink Sink, options *Options) error
 	Run(ctx context.Context, height int64, options *Options) (Payload, error)
 }
 
-// DefaultPipeline is implemented by types that want to use set stages
+// DefaultPipeline is implemented by types that only want to configure existing stages in a pipeline
 type DefaultPipeline interface {
 	Pipeline
 
-	SetStageRunner(stageName StageName, stageRunner StageRunner)
+	SetTasks(stageName StageName, tasks ...Task)
+	SetAsyncTasks(stageName StageName, tasks ...Task)
+	SetCustomStage(stageName StageName, stageRunnerFunc stageRunner)
 }
 
-// CustomPipeline is implemented by types that want to add custom stages
+// CustomPipeline is implemented by types that want to create a pipeline by adding their own stages
 type CustomPipeline interface {
 	Pipeline
 
-	AddStage(stageName StageName, stageRunner StageRunner)
+	AddStage(stage *stage)
 	AddConcurrentStages(stages ...*stage)
 }
 
-// NewDefault creates a new DefaultPipeline with default stages set in default run order
+// NewDefault creates a new DefaultPipeline with all default stages set in default run order
 func NewDefault(payloadFactor PayloadFactory) DefaultPipeline {
 	p := new(payloadFactor)
 
-	emptyRunner := func(name StageName) StageRunner {
+	emptyRunner := func(name StageName) StageRunnerFunc {
 		return StageRunnerFunc(func(context.Context, Payload, TaskValidator) error {
 			logInfo(fmt.Sprintf("stage name %s not set up", name))
 			return nil
 		})
 	}
 
-	p.AddStage(StageSetup, emptyRunner(StageSetup))
-	p.AddStage(StageSyncer, emptyRunner(StageSyncer))
-	p.AddStage(StageFetcher, emptyRunner(StageFetcher))
-	p.AddStage(StageParser, emptyRunner(StageParser))
-	p.AddStage(StageValidator, emptyRunner(StageValidator))
-	p.AddConcurrentStages(NewStage(StageSequencer, emptyRunner(StageSequencer)), NewStage(StageAggregator, emptyRunner(StageAggregator)))
-	p.AddStage(StagePersistor, emptyRunner(StagePersistor))
-	p.AddStage(StageCleanup, emptyRunner(StageCleanup))
+	p.AddStage(NewCustomStage(StageSetup, emptyRunner(StageSetup)))
+	p.AddStage(NewCustomStage(StageSyncer, emptyRunner(StageSyncer)))
+	p.AddStage(NewCustomStage(StageFetcher, emptyRunner(StageFetcher)))
+	p.AddStage(NewCustomStage(StageParser, emptyRunner(StageParser)))
+	p.AddStage(NewCustomStage(StageValidator, emptyRunner(StageValidator)))
+	p.AddConcurrentStages(
+		NewCustomStage(StageSequencer, emptyRunner(StageSequencer)),
+		NewCustomStage(StageAggregator, emptyRunner(StageAggregator)),
+	)
+	p.AddStage(NewCustomStage(StagePersistor, emptyRunner(StagePersistor)))
+	p.AddStage(NewCustomStage(StageCleanup, emptyRunner(StageCleanup)))
 
 	return p
 }
@@ -128,22 +134,31 @@ func new(payloadFactor PayloadFactory) *pipeline {
 	}
 }
 
-// SetOptions sets pipeline options
-func (p *pipeline) SetOptions(o *Options) {
-	p.options = o
-}
-
 // SetLogger sets logger
 func (p *pipeline) SetLogger(l Logger) {
 	logger = l
 }
 
-// SetStageRunner sets up stagerunner for given stage
-func (p *pipeline) SetStageRunner(stageName StageName, stageRunner StageRunner) {
+// SetAsyncTasks adds tasks which will run concurrently in a given stage
+func (p *pipeline) SetAsyncTasks(stageName StageName, tasks ...Task) {
+	p.setRunnerForStage(stageName, asyncRunner{tasks: tasks})
+}
+
+// SetTasks adds tasks which will run one by one in a given stage
+func (p *pipeline) SetTasks(stageName StageName, tasks ...Task) {
+	p.setRunnerForStage(stageName, syncRunner{tasks: tasks})
+}
+
+// SetCustomStage sets custom stage runner for a given stage
+func (p *pipeline) SetCustomStage(stageName StageName, runner stageRunner) {
+	p.setRunnerForStage(stageName, runner)
+}
+
+func (p *pipeline) setRunnerForStage(stageName StageName, runner stageRunner) {
 	for _, stages := range p.stages {
 		for _, s := range stages {
 			if s.Name == stageName {
-				s.runner = stageRunner
+				s.runner = runner
 				return
 			}
 		}
@@ -151,12 +166,7 @@ func (p *pipeline) SetStageRunner(stageName StageName, stageRunner StageRunner) 
 	logInfo(fmt.Sprintf("cannot set stage runner for stage, stage '%v' not found on pipeline", stageName))
 }
 
-// AddStage adds stage to pipeline
-func (p *pipeline) AddStage(stageName StageName, stageRunner StageRunner) {
-	p.stages = append(p.stages, []*stage{NewStage(stageName, stageRunner)})
-}
-
-// AddConcurrentStages adds multiple stages that will run concurrently in the pipeline
+// AddConcurrentStages adds stages that will run concurrently in the pipeline
 func (p *pipeline) AddConcurrentStages(stages ...*stage) {
 	if len(stages) == 0 {
 		return
@@ -164,14 +174,30 @@ func (p *pipeline) AddConcurrentStages(stages ...*stage) {
 	p.stages = append(p.stages, stages)
 }
 
-// AddStageBefore adds custom stage before existing stage
-func (p *pipeline) AddStageBefore(existingStageName StageName, name StageName, stageRunner StageRunner) {
-	p.beforeStage[existingStageName] = append(p.beforeStage[existingStageName], NewStage(name, stageRunner))
+// AddStage adds stage to pipeline
+func (p *pipeline) AddStage(s *stage) {
+	p.stages = append(p.stages, []*stage{s})
 }
 
-// AddStageBefore adds custom stage after existing stage
-func (p *pipeline) AddStageAfter(existingStageName StageName, name StageName, stageRunner StageRunner) {
-	p.afterStage[existingStageName] = append(p.afterStage[existingStageName], NewStage(name, stageRunner))
+// AddStageBefore adds new stage before existing stage
+func (p *pipeline) AddStageBefore(existingStageName StageName, s *stage) {
+	p.beforeStage[existingStageName] = append(p.beforeStage[existingStageName], s)
+}
+
+// AddStageAfter adds new stage after existing stage
+func (p *pipeline) AddStageAfter(existingStageName StageName, s *stage) {
+	p.afterStage[existingStageName] = append(p.afterStage[existingStageName], s)
+}
+
+// RetryStage implements retry mechanism for entire stage
+func (p *pipeline) RetryStage(existingStageName StageName, isTransient func(error) bool, maxRetries int) {
+	for _, stages := range p.stages {
+		for _, s := range stages {
+			if s.Name == existingStageName {
+				s.runner = retryingStageRunner(s.runner, isTransient, maxRetries)
+			}
+		}
+	}
 }
 
 // Start starts the pipeline

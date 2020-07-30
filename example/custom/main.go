@@ -2,7 +2,8 @@ package main
 
 import (
 	"fmt"
-	"github.com/figment-networks/indexing-engine/example/indexing"
+
+	"github.com/figment-networks/indexing-engine/example/custom/indexing"
 )
 
 func main() {

@@ -2,16 +2,34 @@ package pipeline
 
 import (
 	"context"
-	"github.com/hashicorp/go-multierror"
 	"strings"
 	"sync"
+
+	"github.com/hashicorp/go-multierror"
 )
 
 var (
 	_ Stage = (*stage)(nil)
 )
 
-func NewStage(name StageName, runner StageRunner) *stage {
+// NewStage creates a stage with tasks that will run one by one
+func NewStage(name StageName, tasks ...Task) *stage {
+	return &stage{
+		Name:   name,
+		runner: syncRunner{tasks},
+	}
+}
+
+// NewAyncStage creates a stage with tasks that will run concurrently
+func NewAsyncStage(name StageName, tasks ...Task) *stage {
+	return &stage{
+		Name:   name,
+		runner: asyncRunner{tasks},
+	}
+}
+
+// NewCustomStage creates a stage with custom stagerunner
+func NewCustomStage(name StageName, runner stageRunner) *stage {
 	return &stage{
 		Name:   name,
 		runner: runner,
@@ -20,7 +38,7 @@ func NewStage(name StageName, runner StageRunner) *stage {
 
 type stage struct {
 	Name   StageName
-	runner StageRunner
+	runner stageRunner
 }
 
 // Run runs the stage runner assigned to stage
@@ -43,11 +61,6 @@ func (s *stage) canRunTask(taskName string, options *Options) bool {
 	return true
 }
 
-// SyncRunner runs tasks one by one
-func SyncRunner(tasks ...Task) StageRunner {
-	return syncRunner{tasks: tasks}
-}
-
 type syncRunner struct {
 	tasks []Task
 }
@@ -63,11 +76,6 @@ func (r syncRunner) Run(ctx context.Context, payload Payload, canRunTask TaskVal
 		}
 	}
 	return nil
-}
-
-// AsyncRunner runs tasks concurrently
-func AsyncRunner(tasks ...Task) StageRunner {
-	return asyncRunner{tasks: tasks}
 }
 
 type asyncRunner struct {
@@ -102,8 +110,8 @@ func (ar asyncRunner) Run(ctx context.Context, payload Payload, canRunTask TaskV
 	return errs
 }
 
-// RetryingStageRunner implement retry mechanism for StageRunner
-func RetryingStageRunner(sr StageRunner, isTransient func(error) bool, maxRetries int) StageRunner {
+// retryingStageRunner implement retry mechanism for stageRunner
+func retryingStageRunner(sr stageRunner, isTransient func(error) bool, maxRetries int) stageRunner {
 	return StageRunnerFunc(func(ctx context.Context, p Payload, f TaskValidator) error {
 		var err error
 		for i := 0; i < maxRetries; i++ {
@@ -147,7 +155,7 @@ func (r *retryTask) Run(ctx context.Context, p Payload) error {
 	return err
 }
 
-// RetryingTask implement retry mechanism for Task
+// RetryingTask implements retry mechanism for Task
 func RetryingTask(st Task, isTransient func(error) bool, maxRetries int) Task {
 	return &retryTask{
 		name:        st.GetName(),
