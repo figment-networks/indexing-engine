@@ -26,7 +26,7 @@ Below flow-chart depicts all the available stages that come with this package an
 ![indexing engine flow chart](/diagram.jpg)
 
 Please note that all syncing phase stages are executed in sequence, whereas indexing phase stages are executed concurrently
-in order to speed up the indexing process. 
+in order to speed up the indexing process.
 
 ## Installation
 
@@ -179,13 +179,25 @@ p.AddConcurrentStages(
 ```
 
 ## Examples
-In `/examples` folder you can find an examples of pipelines. To run use:
+In `/example` folder you can find an example of a pipeline. To run it use:
 ```shell script
 go run example/default/main.go
 
 go run example/custom/main.go
 ```
 
+## Metrics
+In `metrics` package you can find simple implementation of metrics engine, that is metric system agnostic.
+Currently available engines are:
+  * Prometheus (https://github.com/prometheus/client_golang)
+Nice to have in future:
+  * Statsd (eg. https://github.com/alexcesaro/statsd)
+  * Expvar (https://golang.org/pkg/expvar/)
+
+The example of how to write an engine lives in `/metrics/metrics_test.go`
+
 ## To-Dos:
 * Collect stats for every stage and every task
 * Add context cancellation
+
+
