@@ -81,7 +81,7 @@ func NewMetrics() *Metrics {
 func (m *Metrics) AddEngine(eng MetricsEngine) error {
 	_, ok := m.engines[eng.Name()]
 	if ok {
-		return fmt.Errorf("Engine %s is already registred")
+		return fmt.Errorf("Engine %s is already registred", eng.Name())
 	}
 	m.engines[eng.Name()] = eng
 	return nil
