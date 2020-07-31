@@ -64,7 +64,7 @@ func TestStage_Running(t *testing.T) {
 		task2.EXPECT().GetName().Return("whitelistTask").Times(1)
 		task2.EXPECT().Run(gomock.Any(), gomock.Any()).Return(nil).Times(1)
 
-		s := pipeline.NewStage("test", task1, task2)
+		s := pipeline.NewStageWithTasks("test", task1, task2)
 
 		err := s.Run(ctx, payloadMock, options)
 		if err != nil {
@@ -91,7 +91,7 @@ func TestStage_SyncStage(t *testing.T) {
 			task2.EXPECT().Run(ctx, payloadMock).Return(nil),
 		)
 
-		s := pipeline.NewStage("test_stage", task1, task2)
+		s := pipeline.NewStageWithTasks("test_stage", task1, task2)
 
 		err := s.Run(ctx, payloadMock, nil)
 		if err != nil {
@@ -113,7 +113,7 @@ func TestStage_SyncStage(t *testing.T) {
 		task1.EXPECT().Run(ctx, payloadMock).Return(errors.New("test error"))
 		task2.EXPECT().Run(ctx, payloadMock).Return(nil).Times(0)
 
-		s := pipeline.NewStage("test_stage", task1, task2)
+		s := pipeline.NewStageWithTasks("test_stage", task1, task2)
 
 		err := s.Run(ctx, payloadMock, nil)
 		if err == nil {
@@ -136,7 +136,7 @@ func TestStage_SyncStage(t *testing.T) {
 		task1.EXPECT().Run(ctx, payloadMock).Return(nil)
 		task2.EXPECT().Run(ctx, payloadMock).Return(errors.New("test error"))
 
-		s := pipeline.NewStage("test_stage", task1, task2)
+		s := pipeline.NewStageWithTasks("test_stage", task1, task2)
 
 		err := s.Run(ctx, payloadMock, nil)
 		if err == nil {
@@ -162,7 +162,7 @@ func TestStage_SyncStage(t *testing.T) {
 			task2.EXPECT().Run(ctx, payloadMock).Return(nil),
 		)
 
-		s := pipeline.NewStage("test_stage", pipeline.RetryingTask(retryTask, func(err error) bool {
+		s := pipeline.NewStageWithTasks("test_stage", pipeline.RetryingTask(retryTask, func(err error) bool {
 			return true
 		}, 3), task2)
 
@@ -187,7 +187,7 @@ func TestStage_SyncStage(t *testing.T) {
 		task2.EXPECT().GetName().Return("task2").Times(0)
 		task2.EXPECT().Run(ctx, payloadMock).Return(nil).Times(0)
 
-		s := pipeline.NewStage("test_stage", pipeline.RetryingTask(retryTask, func(err error) bool {
+		s := pipeline.NewStageWithTasks("test_stage", pipeline.RetryingTask(retryTask, func(err error) bool {
 			return true
 		}, 3), task2)
 
@@ -214,7 +214,7 @@ func TestStage_AsyncStage(t *testing.T) {
 		task1.EXPECT().Run(ctx, payloadMock).Return(nil)
 		task2.EXPECT().Run(ctx, payloadMock).Return(nil)
 
-		s := pipeline.NewAsyncStage("test_stage", task1, task2)
+		s := pipeline.NewAsyncStageWithTasks("test_stage", task1, task2)
 
 		err := s.Run(ctx, payloadMock, nil)
 		if err != nil {
@@ -237,7 +237,7 @@ func TestStage_AsyncStage(t *testing.T) {
 		task1.EXPECT().Run(ctx, payloadMock).Return(errors.New("test error"))
 		task2.EXPECT().Run(ctx, payloadMock).Return(nil)
 
-		s := pipeline.NewAsyncStage("test_stage", task1, task2)
+		s := pipeline.NewAsyncStageWithTasks("test_stage", task1, task2)
 
 		err := s.Run(ctx, payloadMock, nil)
 		if err == nil {
@@ -260,7 +260,7 @@ func TestStage_AsyncStage(t *testing.T) {
 		task1.EXPECT().Run(ctx, payloadMock).Return(nil)
 		task2.EXPECT().Run(ctx, payloadMock).Return(errors.New("test error"))
 
-		s := pipeline.NewAsyncStage("test_stage", task1, task2)
+		s := pipeline.NewAsyncStageWithTasks("test_stage", task1, task2)
 
 		err := s.Run(ctx, payloadMock, nil)
 		if err == nil {
@@ -283,7 +283,7 @@ func TestStage_AsyncStage(t *testing.T) {
 		task1.EXPECT().Run(ctx, payloadMock).Return(errors.New("test error"))
 		task2.EXPECT().Run(ctx, payloadMock).Return(errors.New("test error"))
 
-		s := pipeline.NewAsyncStage("test_stage", task1, task2)
+		s := pipeline.NewAsyncStageWithTasks("test_stage", task1, task2)
 
 		err := s.Run(ctx, payloadMock, nil)
 		if err == nil {

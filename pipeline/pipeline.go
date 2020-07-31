@@ -58,6 +58,7 @@ type Options struct {
 }
 
 type Pipeline interface {
+	SetLogger(l Logger)
 	AddStageBefore(existingStageName StageName, stage *stage)
 	AddStageAfter(existingStageName StageName, stage *stage)
 	RetryStage(existingStageName StageName, isTransient func(error) bool, maxRetries int)

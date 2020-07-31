@@ -342,7 +342,7 @@ func TestPipeline_NewCustom(t *testing.T) {
 			call := mockTask.EXPECT().Run(gomock.Any(), gomock.Any()).Return(nil).Times(1)
 			runCalls = append(runCalls, call)
 
-			p.AddStage(pipeline.NewStage(stageName, mockTask))
+			p.AddStage(pipeline.NewStageWithTasks(stageName, mockTask))
 		}
 
 		sinkMock := mock.NewMockSink(ctrl)
@@ -375,9 +375,9 @@ func TestPipeline_NewCustom(t *testing.T) {
 		}
 
 		p.AddConcurrentStages(
-			pipeline.NewStage(pipeline.StageCleanup, mockTasks[0]),
-			pipeline.NewStage(pipeline.StageParser, mockTasks[1]),
-			pipeline.NewStage(pipeline.StageSetup, mockTasks[2]),
+			pipeline.NewStageWithTasks(pipeline.StageCleanup, mockTasks[0]),
+			pipeline.NewStageWithTasks(pipeline.StageParser, mockTasks[1]),
+			pipeline.NewStageWithTasks(pipeline.StageSetup, mockTasks[2]),
 		)
 
 		sinkMock := mock.NewMockSink(ctrl)
@@ -416,7 +416,7 @@ func TestPipeline_AddStageBefore(t *testing.T) {
 
 			beforeTask := mock.NewMockTask(ctrl)
 			beforeTask.EXPECT().GetName().Return("mockTask").Times(1)
-			p.AddStageBefore(stage.existingName, pipeline.NewStage(stage.name, beforeTask))
+			p.AddStageBefore(stage.existingName, pipeline.NewStageWithTasks(stage.name, beforeTask))
 
 			gomock.InOrder(
 				beforeTask.EXPECT().Run(gomock.Any(), gomock.Any()).Return(nil).Times(1),
@@ -444,7 +444,7 @@ func TestPipeline_AddStageBefore(t *testing.T) {
 		beforeTask := mock.NewMockTask(ctrl)
 		beforeTask.EXPECT().GetName().Return("mockTask").Times(1)
 		beforeTask.EXPECT().Run(gomock.Any(), gomock.Any()).Return(stageErr).Times(1)
-		p.AddStageBefore(pipeline.StageFetcher, pipeline.NewStage("beforeFetcher", beforeTask))
+		p.AddStageBefore(pipeline.StageFetcher, pipeline.NewStageWithTasks("beforeFetcher", beforeTask))
 
 		existingStageTask := mock.NewMockTask(ctrl)
 		existingStageTask.EXPECT().GetName().Return("mockTask").Times(0)
@@ -486,7 +486,7 @@ func TestPipeline_AddStageAfter(t *testing.T) {
 
 			afterTask := mock.NewMockTask(ctrl)
 			afterTask.EXPECT().GetName().Return("mockTask").Times(1)
-			p.AddStageAfter(stage.existingName, pipeline.NewStage(stage.name, afterTask))
+			p.AddStageAfter(stage.existingName, pipeline.NewStageWithTasks(stage.name, afterTask))
 
 			gomock.InOrder(
 				existingStageTask.EXPECT().Run(gomock.Any(), gomock.Any()).Return(nil).Times(1),
@@ -514,7 +514,7 @@ func TestPipeline_AddStageAfter(t *testing.T) {
 		afterTask := mock.NewMockTask(ctrl)
 		afterTask.EXPECT().GetName().Return("mockTask").Times(1)
 		afterTask.EXPECT().Run(gomock.Any(), gomock.Any()).Return(stageErr).Times(1)
-		p.AddStageAfter(pipeline.StageFetcher, pipeline.NewStage("afterFetcher", afterTask))
+		p.AddStageAfter(pipeline.StageFetcher, pipeline.NewStageWithTasks("afterFetcher", afterTask))
 
 		existingStageTask := mock.NewMockTask(ctrl)
 		existingStageTask.EXPECT().GetName().Return("mockTask").Times(1)
@@ -583,7 +583,7 @@ func TestPipeline_RetryStage(t *testing.T) {
 			task2.EXPECT().Run(gomock.Any(), gomock.Any()).Return(nil).Times(1),
 		)
 
-		p.AddStage(pipeline.NewStage("test_stage", task1, task2))
+		p.AddStage(pipeline.NewStageWithTasks("test_stage", task1, task2))
 		p.RetryStage("test_stage", func(err error) bool { return true },
 			3)
 
@@ -609,7 +609,7 @@ func TestPipeline_RetryStage(t *testing.T) {
 			task1.EXPECT().Run(gomock.Any(), gomock.Any()).Return(nil).Times(1),
 		)
 
-		p.AddStage(pipeline.NewStage("test_stage", task1))
+		p.AddStage(pipeline.NewStageWithTasks("test_stage", task1))
 		p.RetryStage("test_stage", func(err error) bool { return true },
 			3)
 
@@ -631,7 +631,7 @@ func TestPipeline_RetryStage(t *testing.T) {
 		task1.EXPECT().GetName().Return("task1").Times(3)
 		task1.EXPECT().Run(gomock.Any(), gomock.Any()).Return(errors.New("test error")).Times(3)
 
-		p.AddStage(pipeline.NewStage("test_stage", task1))
+		p.AddStage(pipeline.NewStageWithTasks("test_stage", task1))
 		p.RetryStage("test_stage", func(err error) bool { return true },
 			3)
 

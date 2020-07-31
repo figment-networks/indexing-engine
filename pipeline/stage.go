@@ -12,16 +12,16 @@ var (
 	_ Stage = (*stage)(nil)
 )
 
-// NewStage creates a stage with tasks that will run one by one
-func NewStage(name StageName, tasks ...Task) *stage {
+// NewStageWithTasks creates a stage with tasks that will run one by one
+func NewStageWithTasks(name StageName, tasks ...Task) *stage {
 	return &stage{
 		Name:   name,
 		runner: syncRunner{tasks},
 	}
 }
 
-// NewAyncStage creates a stage with tasks that will run concurrently
-func NewAsyncStage(name StageName, tasks ...Task) *stage {
+// NewAsyncStageWithTasks creates a stage with tasks that will run concurrently
+func NewAsyncStageWithTasks(name StageName, tasks ...Task) *stage {
 	return &stage{
 		Name:   name,
 		runner: asyncRunner{tasks},

@@ -1,8 +1,8 @@
-.PHONY: generate-mocks test
+.PHONY: mockgen test
 
-generate-mocks:
+mockgen:
 	@echo "[mockgen] generating mocks"
-	@mockgen -destination pipeline/mock/mocks.go github.com/figment-networks/indexing-engine/pipeline PayloadFactory,Payload,Source,Sink,Stage,StageRunner,Task
+	@mockgen -destination pipeline/mock/mocks.go github.com/figment-networks/indexing-engine/pipeline PayloadFactory,Payload,Source,Sink,Stage,Task,Logger
 
 test:
 	@echo "[go test] running tests and collecting coverage metrics"

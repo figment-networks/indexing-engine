@@ -13,17 +13,17 @@ func StartPipeline() error {
 
 	// Adds fetcher stage
 	p.AddStage(
-		pipeline.NewStage(pipeline.StageFetcher, NewFetcherTask()),
+		pipeline.NewStageWithTasks(pipeline.StageFetcher, NewFetcherTask()),
 	)
 
 	// Adds parser stage
 	p.AddStage(
-		pipeline.NewAsyncStage(pipeline.StageParser, NewParserTask(), NewParserTask2()),
+		pipeline.NewAsyncStageWithTasks(pipeline.StageParser, NewParserTask(), NewParserTask2()),
 	)
 
 	// Adds syncer stage
 	p.AddStage(
-		pipeline.NewAsyncStage(pipeline.StageSyncer, NewSyncerTask()),
+		pipeline.NewAsyncStageWithTasks(pipeline.StageSyncer, NewSyncerTask()),
 	)
 	// Wraps entire stage with retry mechanism
 	p.RetryStage(
@@ -37,8 +37,8 @@ func StartPipeline() error {
 
 	// Adds sequencer and aggregator stages which will run concurrently
 	p.AddConcurrentStages(
-		pipeline.NewStage(pipeline.StageSequencer, NewSequencerTask()),
-		pipeline.NewStage(pipeline.StageAggregator, NewAggregatorTask()),
+		pipeline.NewStageWithTasks(pipeline.StageSequencer, NewSequencerTask()),
+		pipeline.NewStageWithTasks(pipeline.StageAggregator, NewAggregatorTask()),
 	)
 
 	// Demonstrates how to use custom func as a stage runner
