@@ -12,40 +12,6 @@ import (
 )
 
 func TestStage_Running(t *testing.T) {
-	t.Run("Run() runs stage runner", func(t *testing.T) {
-		ctrl, ctx := gomock.WithContext(context.Background(), t)
-		defer ctrl.Finish()
-
-		payloadMock := mock.NewMockPayload(ctrl)
-
-		stageRunnerMock := mock.NewMockStageRunner(ctrl)
-		stageRunnerMock.EXPECT().Run(ctx, payloadMock, gomock.Any()).Return(nil)
-
-		s := pipeline.NewCustomStage("test", stageRunnerMock)
-
-		err := s.Run(ctx, payloadMock, nil)
-		if err != nil {
-			t.Errorf("exp: nil, got: %f", err)
-		}
-	})
-
-	t.Run("Run() runs stage runner with error", func(t *testing.T) {
-		ctrl, ctx := gomock.WithContext(context.Background(), t)
-		defer ctrl.Finish()
-
-		payloadMock := mock.NewMockPayload(ctrl)
-
-		stageRunnerMock := mock.NewMockStageRunner(ctrl)
-		stageRunnerMock.EXPECT().Run(ctx, payloadMock, gomock.Any()).Return(errors.New("test error"))
-
-		s := pipeline.NewCustomStage("test", stageRunnerMock)
-
-		err := s.Run(ctx, payloadMock, nil)
-		if err == nil {
-			t.Errorf("exp: %f, got: nil", err)
-		}
-	})
-
 	t.Run("Run() runs only whitelisted tasks", func(t *testing.T) {
 		ctrl, ctx := gomock.WithContext(context.Background(), t)
 		defer ctrl.Finish()
