@@ -137,7 +137,8 @@ func (m *Metrics) Hotload(name string) error {
 // NewCounterWithTags create a group of counters from defined engines
 func (m *Metrics) NewCounterWithTags(opts Options) (*GroupTagCounter, error) {
 	gc := &GroupTagCounter{
-		options: opts,
+		options:   opts,
+		registred: make(map[uint64]*GroupCounter),
 	}
 	for _, e := range m.engines {
 		c, err := e.NewCounterWithTags(opts)
@@ -164,7 +165,8 @@ func (m *Metrics) MustNewCounterWithTags(opts Options) *GroupTagCounter {
 // NewGaugeWithTags create a group of gauges from defined engines
 func (m *Metrics) NewGaugeWithTags(opts Options) (*GroupTagGauge, error) {
 	gc := &GroupTagGauge{
-		options: opts,
+		options:   opts,
+		registred: make(map[uint64]*GroupGauge),
 	}
 
 	for _, e := range m.engines {
@@ -191,7 +193,8 @@ func (m *Metrics) MustNewGaugeWithTags(opts Options) *GroupTagGauge {
 // NewHistogramWithTags create a group of histograms from defined engines
 func (m *Metrics) NewHistogramWithTags(opts HistogramOptions) (*GroupTagHistogram, error) {
 	gc := &GroupTagHistogram{
-		options: opts,
+		options:   opts,
+		registred: make(map[uint64]*GroupObserver),
 	}
 	for _, e := range m.engines {
 		c, err := e.NewHistogramWithTags(opts)
