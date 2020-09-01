@@ -19,7 +19,9 @@ type Metrics struct {
 // New Prometheus Engine metrics constructor
 func New() (m *Metrics) {
 	reg := prometheus.NewRegistry()
+
 	reg.MustRegister(prometheus.NewProcessCollector(prometheus.ProcessCollectorOpts{}))
+	reg.Register(prometheus.NewGoCollector())
 	return &Metrics{reg: reg, gatherers: prometheus.Gatherers{reg}}
 }
 

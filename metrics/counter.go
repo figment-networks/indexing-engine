@@ -1,5 +1,7 @@
 package metrics
 
+import "sync"
+
 // Counter is an interface that generalizes a group of metrics
 // that are calculate the number over time
 type Counter interface {
@@ -27,6 +29,9 @@ type TagCounter interface {
 type GroupTagCounter struct {
 	tagcounters []TagCounter
 	options     Options
+
+	registred     map[uint64]*GroupCounter
+	registredLock sync.Mutex
 }
 
 // AddCounter is appending new counter to set
@@ -36,6 +41,7 @@ func (gtc *GroupTagCounter) AddCounter(c TagCounter) {
 
 // WithTags makes a group with given tags (label-value pairs)
 func (gtc *GroupTagCounter) WithTags(tags map[string]string) (*GroupCounter, error) {
+
 	gc := &GroupCounter{}
 	for _, tc := range gtc.tagcounters {
 		c, err := tc.WithTags(tags)
@@ -50,12 +56,23 @@ func (gtc *GroupTagCounter) WithTags(tags map[string]string) (*GroupCounter, err
 
 // WithLabels make a group with given labels
 func (gtc *GroupTagCounter) WithLabels(labels ...string) *GroupCounter {
-	gc := &GroupCounter{}
+	h := secureHash.GetHash(labels)
+
+	gtc.registredLock.Lock()
+	defer gtc.registredLock.Unlock()
+
+	gc, ok := gtc.registred[h]
+	if ok {
+		return gc
+	}
+
+	gc = &GroupCounter{}
 	for _, tc := range gtc.tagcounters {
 		c := tc.WithLabels(labels...)
 		gc.AddCounter(c)
 	}
 
+	gtc.registred[h] = gc
 	return gc
 }
 

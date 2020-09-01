@@ -1,5 +1,7 @@
 package metrics
 
+import "sync"
+
 // Observer is an interface that generalizes a group of metrics
 // that are receiving a set of numeric values in time
 type Observer interface {
@@ -46,6 +48,9 @@ type TagObserver interface {
 type GroupTagHistogram struct {
 	tagobservers []TagObserver
 	options      HistogramOptions
+
+	registred     map[uint64]*GroupObserver
+	registredLock sync.Mutex
 }
 
 // AddHistogram is appending new histogram to set
@@ -69,12 +74,23 @@ func (gth *GroupTagHistogram) WithTags(tags map[string]string) (*GroupObserver, 
 
 // WithLabels make a group with given labels
 func (gth *GroupTagHistogram) WithLabels(labels ...string) *GroupObserver {
-	gh := &GroupObserver{}
+	h := secureHash.GetHash(labels)
+
+	gth.registredLock.Lock()
+	defer gth.registredLock.Unlock()
+
+	gh, ok := gth.registred[h]
+	if ok {
+		return gh
+	}
+
+	gh = &GroupObserver{}
 	for _, tc := range gth.tagobservers {
 		c := tc.WithLabels(labels...)
 		gh.AddObserver(c)
 	}
 
+	gth.registred[h] = gh
 	return gh
 }
 

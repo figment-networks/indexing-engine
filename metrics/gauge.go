@@ -1,5 +1,7 @@
 package metrics
 
+import "sync"
+
 // Gauge is an interface that generalizes a group of metrics
 // that are used to report a curent level/number
 type Gauge interface {
@@ -35,6 +37,9 @@ type TagGauge interface {
 type GroupTagGauge struct {
 	taggauges []TagGauge
 	options   Options
+
+	registred     map[uint64]*GroupGauge
+	registredLock sync.Mutex
 }
 
 // AddGauge is appending new gauge to set
@@ -58,13 +63,25 @@ func (gtg *GroupTagGauge) WithTags(tags map[string]string) (*GroupGauge, error) 
 
 // WithLabels makes a group with given labels
 func (gtg *GroupTagGauge) WithLabels(labels ...string) *GroupGauge {
-	gc := &GroupGauge{}
-	for _, tc := range gtg.taggauges {
-		c := tc.WithLabels(labels...)
-		gc.AddGauge(c)
+	h := secureHash.GetHash(labels)
+
+	gtg.registredLock.Lock()
+	defer gtg.registredLock.Unlock()
+
+	gg, ok := gtg.registred[h]
+	if ok {
+		return gg
 	}
 
-	return gc
+	gg = &GroupGauge{}
+	for _, tc := range gtg.taggauges {
+		c := tc.WithLabels(labels...)
+		gg.AddGauge(c)
+	}
+
+	gtg.registred[h] = gg
+
+	return gg
 }
 
 // GroupGauge is a set of Gauges that within the same tags
