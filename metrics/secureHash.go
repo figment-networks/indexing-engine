@@ -15,6 +15,7 @@ type secureHasher struct {
 func (sh *secureHasher) GetHash(s []string) uint64 {
 	sh.m.Lock()
 	defer sh.m.Unlock()
+	sh.h.Reset()
 
 	for _, part := range s {
 		sh.h.WriteString(part)
