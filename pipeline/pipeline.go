@@ -211,10 +211,12 @@ func (p *pipeline) Start(ctx context.Context, source Source, sink Sink, options 
 	for ok := true; ok; ok = source.Next(ctx, recentPayload) {
 		payload := p.payloadFactory.GetPayload(source.Current())
 
-		pipelineErr = p.runStages(pCtx, payload)
-		if pipelineErr != nil {
-			// We don't want to run pipeline for rest of heights since we don't want to have gaps in records
-			break
+		if !source.SkipRunningStagesForCurrentHeight() {
+			pipelineErr = p.runStages(pCtx, payload)
+			if pipelineErr != nil {
+				// We don't want to run pipeline for rest of heights since we don't want to have gaps in records
+				break
+			}
 		}
 
 		if err := sink.Consume(pCtx, payload); err != nil {

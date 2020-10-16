@@ -26,6 +26,9 @@ type Source interface {
 
 	// Err return error if any
 	Err() error
+
+	// SkipRunningStagesForCurrentHeight return bool to skip running stages
+	SkipRunningStagesForCurrentHeight() bool
 }
 
 // Sink is executed as a last stage in the pipeline

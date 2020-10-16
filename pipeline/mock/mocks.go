@@ -120,6 +120,20 @@ func (mr *MockSourceMockRecorder) Current() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Current", reflect.TypeOf((*MockSource)(nil).Current))
 }
 
+// SkipRunningStagesForCurrentHeight mocks base method
+func (m *MockSource) SkipRunningStagesForCurrentHeight() bool {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SkipRunningStagesForCurrentHeight")
+	ret0, _ := ret[0].(bool)
+	return ret0
+}
+
+// SkipRunningStagesForCurrentHeight indicates an expected call of SkipRunningStagesForCurrentHeight
+func (mr *MockSourceMockRecorder) SkipRunningStagesForCurrentHeight() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SkipRunningStagesForCurrentHeight", reflect.TypeOf((*MockSource)(nil).SkipRunningStagesForCurrentHeight))
+}
+
 // Err mocks base method
 func (m *MockSource) Err() error {
 	m.ctrl.T.Helper()
