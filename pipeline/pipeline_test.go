@@ -38,6 +38,7 @@ type sourceMock struct {
 	startHeight                       int64
 	endHeight                         int64
 	currentHeight                     int64
+	skipRunningStagesForCurrentHeight bool
 }
 
 func (s *sourceMock) Next(context.Context, pipeline.Payload) bool {
@@ -57,7 +58,7 @@ func (s *sourceMock) Err() error {
 }
 
 func (s *sourceMock) SkipRunningStagesForCurrentHeight() bool {
-	return false
+	return s.skipRunningStagesForCurrentHeight
 }
 
 func TestPipeline_SetStages(t *testing.T) {
@@ -118,7 +119,7 @@ func TestPipeline_SetStages(t *testing.T) {
 
 		options := &pipeline.Options{}
 
-		if err := p.Start(ctx, &sourceMock{1, 2, 1}, sinkMock, options); err != nil {
+		if err := p.Start(ctx, &sourceMock{1, 2, 1, false}, sinkMock, options); err != nil {
 			t.Errorf("should not return error")
 		}
 	})
@@ -193,7 +194,67 @@ func TestPipeline_Start(t *testing.T) {
 		sinkMock.EXPECT().Consume(gomock.Any(), gomock.Any()).Return(nil).Times(1).After(runCleanup)
 		options := &pipeline.Options{}
 
-		if err := p.Start(ctx, &sourceMock{1, 1, 1}, sinkMock, options); err != nil {
+		if err := p.Start(ctx, &sourceMock{1, 1, 1,false}, sinkMock, options); err != nil {
+			t.Errorf("did not expect error")
+		}
+	})
+
+	t.Run("pipeline skip running stages", func(t *testing.T) {
+		ctrl, ctx := gomock.WithContext(context.Background(), t)
+		defer ctrl.Finish()
+
+		payloadFactoryMock := mock.NewMockPayloadFactory(ctrl)
+		payloadFactoryMock.EXPECT().GetPayload(gomock.Any()).Return(&payloadMock{}).Times(1)
+
+		p := pipeline.NewDefault(payloadFactoryMock)
+
+		setupTaskMock := mock.NewMockTask(ctrl)
+		fetcherTaskMock := mock.NewMockTask(ctrl)
+		parserTaskMock := mock.NewMockTask(ctrl)
+		validatorTaskMock := mock.NewMockTask(ctrl)
+		syncerTaskMock := mock.NewMockTask(ctrl)
+		sequencerTaskMock := mock.NewMockTask(ctrl)
+		aggregatorTaskMock := mock.NewMockTask(ctrl)
+		persistorTaskMock := mock.NewMockTask(ctrl)
+		cleanupTaskMock := mock.NewMockTask(ctrl)
+
+		p.SetTasks(pipeline.StageSetup, setupTaskMock)
+		p.SetTasks(pipeline.StageFetcher, fetcherTaskMock)
+		p.SetTasks(pipeline.StageParser, parserTaskMock)
+		p.SetTasks(pipeline.StageValidator, validatorTaskMock)
+		p.SetTasks(pipeline.StageSyncer, syncerTaskMock)
+		p.SetTasks(pipeline.StageSequencer, sequencerTaskMock)
+		p.SetTasks(pipeline.StageAggregator, aggregatorTaskMock)
+		p.SetTasks(pipeline.StagePersistor, persistorTaskMock)
+		p.SetTasks(pipeline.StageCleanup, cleanupTaskMock)
+		sinkMock := mock.NewMockSink(ctrl)
+
+		runSetup := setupTaskMock.EXPECT().Run(gomock.Any(), gomock.Any()).Return(nil).Times(0)
+		runSyncer := syncerTaskMock.EXPECT().Run(gomock.Any(), gomock.Any()).Return(nil).Times(0)
+		runFetcher := fetcherTaskMock.EXPECT().Run(gomock.Any(), gomock.Any()).Return(nil).Times(0)
+		runParser := parserTaskMock.EXPECT().Run(gomock.Any(), gomock.Any()).Return(nil).Times(0)
+		runValidator := validatorTaskMock.EXPECT().Run(gomock.Any(), gomock.Any()).Return(nil).Times(0)
+		runSequencer := sequencerTaskMock.EXPECT().Run(gomock.Any(), gomock.Any()).Return(nil).Times(0)
+		runAggregator := aggregatorTaskMock.EXPECT().Run(gomock.Any(), gomock.Any()).Return(nil).Times(0)
+		runPersistor := persistorTaskMock.EXPECT().Run(gomock.Any(), gomock.Any()).Return(nil).Times(0)
+		runCleanup := cleanupTaskMock.EXPECT().Run(gomock.Any(), gomock.Any()).Return(nil).Times(0)
+
+		runSyncer.After(runSetup)
+		runFetcher.After(runSyncer)
+		runParser.After(runFetcher)
+		runValidator.After(runParser)
+
+		runSequencer.After(runValidator)
+		runAggregator.After(runValidator)
+
+		runPersistor.After(runSequencer)
+		runPersistor.After(runAggregator)
+		runCleanup.After(runPersistor)
+
+		sinkMock.EXPECT().Consume(gomock.Any(), gomock.Any()).Return(nil).Times(1).After(runCleanup)
+		options := &pipeline.Options{}
+
+		if err := p.Start(ctx, &sourceMock{1, 1, 1,true}, sinkMock, options); err != nil {
 			t.Errorf("did not expect error")
 		}
 	})
@@ -233,7 +294,7 @@ func TestPipeline_Start(t *testing.T) {
 
 		options := &pipeline.Options{}
 
-		if err := p.Start(ctx, &sourceMock{1, 1, 1}, sinkMock, options); err != nil {
+		if err := p.Start(ctx, &sourceMock{1, 1, 1, false}, sinkMock, options); err != nil {
 			t.Errorf("did not expect error")
 		}
 	})
@@ -284,7 +345,7 @@ func TestPipeline_Start(t *testing.T) {
 
 			options := &pipeline.Options{}
 
-			if err := p.Start(ctx, &sourceMock{1, 2, 1}, sinkMock, options); err != stageErr {
+			if err := p.Start(ctx, &sourceMock{1, 2, 1, false}, sinkMock, options); err != stageErr {
 				t.Errorf("expected error")
 			}
 		}
@@ -319,7 +380,7 @@ func TestPipeline_Start(t *testing.T) {
 
 		options := &pipeline.Options{}
 
-		if err := p.Start(ctx, &sourceMock{1, 2, 1}, sinkMock, options); err == nil {
+		if err := p.Start(ctx, &sourceMock{1, 2, 1, false}, sinkMock, options); err == nil {
 			t.Errorf("expected error")
 		}
 	})
@@ -355,7 +416,7 @@ func TestPipeline_NewCustom(t *testing.T) {
 
 		gomock.InOrder(runCalls...)
 
-		if err := p.Start(ctx, &sourceMock{1, 1, 1}, sinkMock, nil); err != nil {
+		if err := p.Start(ctx, &sourceMock{1, 1, 1, false}, sinkMock, nil); err != nil {
 			t.Errorf("did not expect error")
 		}
 	})
@@ -387,7 +448,7 @@ func TestPipeline_NewCustom(t *testing.T) {
 		sinkMock := mock.NewMockSink(ctrl)
 		sinkMock.EXPECT().Consume(gomock.Any(), gomock.Any()).Return(nil).Times(1)
 
-		if err := p.Start(ctx, &sourceMock{1, 1, 1}, sinkMock, nil); err != nil {
+		if err := p.Start(ctx, &sourceMock{1, 1, 1, false}, sinkMock, nil); err != nil {
 			t.Errorf("did not expect error")
 		}
 	})
