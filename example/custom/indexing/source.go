@@ -18,7 +18,6 @@ type source struct {
 	currentHeight                     int64
 	endHeight                         int64
 	err                               error
-	skipRunningStagesForCurrentHeight bool
 }
 
 func (s *source) Next(ctx context.Context, p pipeline.Payload) bool {
@@ -38,5 +37,5 @@ func (s *source) Err() error {
 }
 
 func (s *source) SkipRunningStagesForCurrentHeight() bool {
-	return s.skipRunningStagesForCurrentHeight
+	return false
 }

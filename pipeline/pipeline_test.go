@@ -38,7 +38,6 @@ type sourceMock struct {
 	startHeight                       int64
 	endHeight                         int64
 	currentHeight                     int64
-	skipRunningStagesForCurrentHeight bool
 }
 
 func (s *sourceMock) Next(context.Context, pipeline.Payload) bool {
@@ -58,7 +57,7 @@ func (s *sourceMock) Err() error {
 }
 
 func (s *sourceMock) SkipRunningStagesForCurrentHeight() bool {
-	return s.skipRunningStagesForCurrentHeight
+	return false
 }
 
 func TestPipeline_SetStages(t *testing.T) {
@@ -119,7 +118,7 @@ func TestPipeline_SetStages(t *testing.T) {
 
 		options := &pipeline.Options{}
 
-		if err := p.Start(ctx, &sourceMock{1, 2, 1, false}, sinkMock, options); err != nil {
+		if err := p.Start(ctx, &sourceMock{1, 2, 1}, sinkMock, options); err != nil {
 			t.Errorf("should not return error")
 		}
 	})
@@ -194,7 +193,7 @@ func TestPipeline_Start(t *testing.T) {
 		sinkMock.EXPECT().Consume(gomock.Any(), gomock.Any()).Return(nil).Times(1).After(runCleanup)
 		options := &pipeline.Options{}
 
-		if err := p.Start(ctx, &sourceMock{1, 1, 1, false}, sinkMock, options); err != nil {
+		if err := p.Start(ctx, &sourceMock{1, 1, 1}, sinkMock, options); err != nil {
 			t.Errorf("did not expect error")
 		}
 	})
@@ -234,7 +233,7 @@ func TestPipeline_Start(t *testing.T) {
 
 		options := &pipeline.Options{}
 
-		if err := p.Start(ctx, &sourceMock{1, 1, 1, false}, sinkMock, options); err != nil {
+		if err := p.Start(ctx, &sourceMock{1, 1, 1}, sinkMock, options); err != nil {
 			t.Errorf("did not expect error")
 		}
 	})
@@ -285,7 +284,7 @@ func TestPipeline_Start(t *testing.T) {
 
 			options := &pipeline.Options{}
 
-			if err := p.Start(ctx, &sourceMock{1, 2, 1, false}, sinkMock, options); err != stageErr {
+			if err := p.Start(ctx, &sourceMock{1, 2, 1}, sinkMock, options); err != stageErr {
 				t.Errorf("expected error")
 			}
 		}
@@ -320,7 +319,7 @@ func TestPipeline_Start(t *testing.T) {
 
 		options := &pipeline.Options{}
 
-		if err := p.Start(ctx, &sourceMock{1, 2, 1, false}, sinkMock, options); err == nil {
+		if err := p.Start(ctx, &sourceMock{1, 2, 1}, sinkMock, options); err == nil {
 			t.Errorf("expected error")
 		}
 	})
@@ -356,7 +355,7 @@ func TestPipeline_NewCustom(t *testing.T) {
 
 		gomock.InOrder(runCalls...)
 
-		if err := p.Start(ctx, &sourceMock{1, 1, 1, false}, sinkMock, nil); err != nil {
+		if err := p.Start(ctx, &sourceMock{1, 1, 1}, sinkMock, nil); err != nil {
 			t.Errorf("did not expect error")
 		}
 	})
@@ -388,7 +387,7 @@ func TestPipeline_NewCustom(t *testing.T) {
 		sinkMock := mock.NewMockSink(ctrl)
 		sinkMock.EXPECT().Consume(gomock.Any(), gomock.Any()).Return(nil).Times(1)
 
-		if err := p.Start(ctx, &sourceMock{1, 1, 1, false}, sinkMock, nil); err != nil {
+		if err := p.Start(ctx, &sourceMock{1, 1, 1}, sinkMock, nil); err != nil {
 			t.Errorf("did not expect error")
 		}
 	})
