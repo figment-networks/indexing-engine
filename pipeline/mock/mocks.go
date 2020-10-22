@@ -120,18 +120,18 @@ func (mr *MockSourceMockRecorder) Current() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Current", reflect.TypeOf((*MockSource)(nil).Current))
 }
 
-// SkipRunningStagesForCurrentHeight mocks base method
-func (m *MockSource) SkipRunningStagesForCurrentHeight() bool {
+// Skip mocks base method
+func (m *MockSource) Skip() bool {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SkipRunningStagesForCurrentHeight")
+	ret := m.ctrl.Call(m, "Skip")
 	ret0, _ := ret[0].(bool)
 	return ret0
 }
 
-// SkipRunningStagesForCurrentHeight indicates an expected call of SkipRunningStagesForCurrentHeight
-func (mr *MockSourceMockRecorder) SkipRunningStagesForCurrentHeight() *gomock.Call {
+// Skip indicates an expected call of Skip
+func (mr *MockSourceMockRecorder) Skip() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SkipRunningStagesForCurrentHeight", reflect.TypeOf((*MockSource)(nil).SkipRunningStagesForCurrentHeight))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Skip", reflect.TypeOf((*MockSource)(nil).Skip))
 }
 
 // Err mocks base method

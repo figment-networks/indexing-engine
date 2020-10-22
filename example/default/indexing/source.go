@@ -14,10 +14,10 @@ func NewSource() pipeline.Source {
 }
 
 type source struct {
-	startHeight                       int64
-	currentHeight                     int64
-	endHeight                         int64
-	err                               error
+	startHeight   int64
+	currentHeight int64
+	endHeight     int64
+	err           error
 }
 
 func (s *source) Next(ctx context.Context, p pipeline.Payload) bool {
@@ -36,6 +36,6 @@ func (s *source) Err() error {
 	return s.err
 }
 
-func (s *source) SkipRunningStagesForCurrentHeight() bool {
+func (s *source) Skip() bool {
 	return false
 }
