@@ -219,7 +219,7 @@ func (p *pipeline) Start(ctx context.Context, source Source, sink Sink, options 
 			}
 		}
 
-		if err := sink.Consume(pCtx, payload); err != nil {
+		if err := sink.Consume(pCtx, payload, source.Skip()); err != nil {
 			pipelineErr = err
 			// Stop execution when sink errors out
 			break
