@@ -207,49 +207,9 @@ func TestPipeline_Start(t *testing.T) {
 		payloadFactoryMock.EXPECT().GetPayload(gomock.Any()).Return(&payloadMock{}).Times(1)
 
 		p := pipeline.NewDefault(payloadFactoryMock)
-
-		setupTaskMock := mock.NewMockTask(ctrl)
-		fetcherTaskMock := mock.NewMockTask(ctrl)
-		parserTaskMock := mock.NewMockTask(ctrl)
-		validatorTaskMock := mock.NewMockTask(ctrl)
-		syncerTaskMock := mock.NewMockTask(ctrl)
-		sequencerTaskMock := mock.NewMockTask(ctrl)
-		aggregatorTaskMock := mock.NewMockTask(ctrl)
-		persistorTaskMock := mock.NewMockTask(ctrl)
 		cleanupTaskMock := mock.NewMockTask(ctrl)
-
-		p.SetTasks(pipeline.StageSetup, setupTaskMock)
-		p.SetTasks(pipeline.StageFetcher, fetcherTaskMock)
-		p.SetTasks(pipeline.StageParser, parserTaskMock)
-		p.SetTasks(pipeline.StageValidator, validatorTaskMock)
-		p.SetTasks(pipeline.StageSyncer, syncerTaskMock)
-		p.SetTasks(pipeline.StageSequencer, sequencerTaskMock)
-		p.SetTasks(pipeline.StageAggregator, aggregatorTaskMock)
-		p.SetTasks(pipeline.StagePersistor, persistorTaskMock)
-		p.SetTasks(pipeline.StageCleanup, cleanupTaskMock)
 		sinkMock := mock.NewMockSink(ctrl)
-
-		runSetup := setupTaskMock.EXPECT().Run(gomock.Any(), gomock.Any()).Return(nil).Times(0)
-		runSyncer := syncerTaskMock.EXPECT().Run(gomock.Any(), gomock.Any()).Return(nil).Times(0)
-		runFetcher := fetcherTaskMock.EXPECT().Run(gomock.Any(), gomock.Any()).Return(nil).Times(0)
-		runParser := parserTaskMock.EXPECT().Run(gomock.Any(), gomock.Any()).Return(nil).Times(0)
-		runValidator := validatorTaskMock.EXPECT().Run(gomock.Any(), gomock.Any()).Return(nil).Times(0)
-		runSequencer := sequencerTaskMock.EXPECT().Run(gomock.Any(), gomock.Any()).Return(nil).Times(0)
-		runAggregator := aggregatorTaskMock.EXPECT().Run(gomock.Any(), gomock.Any()).Return(nil).Times(0)
-		runPersistor := persistorTaskMock.EXPECT().Run(gomock.Any(), gomock.Any()).Return(nil).Times(0)
 		runCleanup := cleanupTaskMock.EXPECT().Run(gomock.Any(), gomock.Any()).Return(nil).Times(0)
-
-		runSyncer.After(runSetup)
-		runFetcher.After(runSyncer)
-		runParser.After(runFetcher)
-		runValidator.After(runParser)
-
-		runSequencer.After(runValidator)
-		runAggregator.After(runValidator)
-
-		runPersistor.After(runSequencer)
-		runPersistor.After(runAggregator)
-		runCleanup.After(runPersistor)
 
 		sinkMock.EXPECT().Consume(gomock.Any(), gomock.Any()).Return(nil).Times(1).After(runCleanup)
 		options := &pipeline.Options{}
