@@ -34,7 +34,7 @@ type Source interface {
 // Sink is executed as a last stage in the pipeline
 type Sink interface {
 	// Consume consumes payloadMock
-	Consume(context.Context, Payload, bool) error
+	Consume(context.Context, Payload) error
 }
 
 // TaskValidator is a type for validating task by provided task name

@@ -12,7 +12,7 @@ func NewSink() pipeline.Sink {
 
 type sink struct{}
 
-func (s sink) Consume(ctx context.Context, p pipeline.Payload, onlyVersionUpdate bool) error {
+func (s sink) Consume(ctx context.Context, p pipeline.Payload) error {
 	fmt.Println("sink")
 	return nil
 }

@@ -186,7 +186,7 @@ func (m *MockSink) EXPECT() *MockSinkMockRecorder {
 }
 
 // Consume mocks base method
-func (m *MockSink) Consume(arg0 context.Context, arg1 pipeline.Payload, arg2 bool) error {
+func (m *MockSink) Consume(arg0 context.Context, arg1 pipeline.Payload) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Consume", arg0, arg1)
 	ret0, _ := ret[0].(error)
