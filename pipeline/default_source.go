@@ -1,11 +1,8 @@
-package indexing
+package pipeline
 
-import (
-	"context"
-	"github.com/figment-networks/indexing-engine/pipeline"
-)
+import "context"
 
-func NewSource() pipeline.Source {
+func NewSource() Source {
 	return &source{
 		currentHeight: 10,
 		startHeight:   10,
@@ -20,7 +17,7 @@ type source struct {
 	err           error
 }
 
-func (s *source) Next(ctx context.Context, p pipeline.Payload) bool {
+func (s *source) Next(ctx context.Context, p Payload) bool {
 	if s.err == nil && s.currentHeight < s.endHeight {
 		s.currentHeight = s.currentHeight + 1
 		return true
@@ -36,6 +33,6 @@ func (s *source) Err() error {
 	return s.err
 }
 
-func (s *source) Skip(stageName pipeline.StageName) bool {
+func (s *source) Skip(stageName StageName) bool {
 	return false
 }

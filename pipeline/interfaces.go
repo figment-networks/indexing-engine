@@ -27,8 +27,8 @@ type Source interface {
 	// Err return error if any
 	Err() error
 
-	// Skip return bool to skip running stages
-	Skip() bool
+	// Skip return bool to skip stage
+	Skip(StageName) bool
 }
 
 // Sink is executed as a last stage in the pipeline

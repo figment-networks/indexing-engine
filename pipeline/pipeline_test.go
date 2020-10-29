@@ -57,7 +57,7 @@ func (s *sourceMock) Err() error {
 	return nil
 }
 
-func (s *sourceMock) Skip() bool {
+func (s *sourceMock) Skip(stageName pipeline.StageName) bool {
 	return s.skip
 }
 

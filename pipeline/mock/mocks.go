@@ -121,7 +121,7 @@ func (mr *MockSourceMockRecorder) Current() *gomock.Call {
 }
 
 // Skip mocks base method
-func (m *MockSource) Skip() bool {
+func (m *MockSource) Skip(stageName pipeline.StageName) bool {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Skip")
 	ret0, _ := ret[0].(bool)
