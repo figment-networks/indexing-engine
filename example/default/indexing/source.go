@@ -35,3 +35,7 @@ func (s *source) Current() int64 {
 func (s *source) Err() error {
 	return s.err
 }
+
+func (s *source) Skip(stageName pipeline.StageName) bool {
+	return false
+}

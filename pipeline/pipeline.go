@@ -211,7 +211,7 @@ func (p *pipeline) Start(ctx context.Context, source Source, sink Sink, options 
 	for ok := true; ok; ok = source.Next(ctx, recentPayload) {
 		payload := p.payloadFactory.GetPayload(source.Current())
 
-		pipelineErr = p.runStages(pCtx, payload)
+		pipelineErr = p.runStages(pCtx, payload, source)
 		if pipelineErr != nil {
 			// We don't want to run pipeline for rest of heights since we don't want to have gaps in records
 			break
@@ -243,7 +243,7 @@ func (p *pipeline) Run(ctx context.Context, height int64, options *Options) (Pay
 
 	payload := p.payloadFactory.GetPayload(height)
 
-	if err := p.runStages(pCtx, payload); err != nil {
+	if err := p.runStages(pCtx, payload, NewSource()); err != nil {
 		return nil, err
 	}
 
@@ -265,14 +265,14 @@ func (p *pipeline) setupCtx(ctx context.Context) (context.Context, context.Cance
 }
 
 // runStages runs all the stages
-func (p *pipeline) runStages(ctx context.Context, payload Payload) error {
+func (p *pipeline) runStages(ctx context.Context, payload Payload, source Source) error {
 	for _, stages := range p.stages {
 		if len(stages) == 1 {
-			if err := p.runStage(ctx, stages[0], payload); err != nil {
+			if err := p.runStage(ctx, stages[0], payload, source); err != nil {
 				return err
 			}
 		} else if len(stages) > 1 {
-			if err := p.runStagesConcurrently(ctx, payload, stages); err != nil {
+			if err := p.runStagesConcurrently(ctx, payload, stages, source); err != nil {
 				return err
 			}
 		} else {
@@ -284,7 +284,7 @@ func (p *pipeline) runStages(ctx context.Context, payload Payload) error {
 }
 
 // runStagesConcurrently runs indexing stages concurrently
-func (p *pipeline) runStagesConcurrently(ctx context.Context, payload Payload, stages []*stage) error {
+func (p *pipeline) runStagesConcurrently(ctx context.Context, payload Payload, stages []*stage, source Source) error {
 	stagesCount := len(stages)
 	if stagesCount == 0 {
 		return ErrMissingStages
@@ -297,7 +297,7 @@ func (p *pipeline) runStagesConcurrently(ctx context.Context, payload Payload, s
 
 	for _, s := range stages {
 		go func(stage *stage) {
-			if err := p.runStage(ctx, stage, payload); err != nil {
+			if err := p.runStage(ctx, stage, payload, source); err != nil {
 				errCh <- err
 			}
 			wg.Done()
@@ -316,12 +316,12 @@ func (p *pipeline) runStagesConcurrently(ctx context.Context, payload Payload, s
 }
 
 // runStage executes stage runner for given stage
-func (p *pipeline) runStage(ctx context.Context, stage *stage, payload Payload) error {
+func (p *pipeline) runStage(ctx context.Context, stage *stage, payload Payload, source Source) error {
 	if stage == nil {
 		return ErrMissingStage
 	}
 
-	if p.canRunStage(stage.Name) {
+	if p.canRunStage(stage.Name, source) {
 		before := p.beforeStage[stage.Name]
 		if len(before) > 0 {
 			for _, s := range before {
@@ -348,7 +348,7 @@ func (p *pipeline) runStage(ctx context.Context, stage *stage, payload Payload) 
 }
 
 // canRunStage determines if stage can be ran
-func (p *pipeline) canRunStage(stageName StageName) bool {
+func (p *pipeline) canRunStage(stageName StageName, source Source) bool {
 	if p.options != nil && len(p.options.StagesBlacklist) > 0 {
 		for _, s := range p.options.StagesBlacklist {
 			if s == stageName {
@@ -356,6 +356,5 @@ func (p *pipeline) canRunStage(stageName StageName) bool {
 			}
 		}
 	}
-
-	return true
+	return !source.Skip(stageName)
 }
