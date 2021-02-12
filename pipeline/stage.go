@@ -45,6 +45,11 @@ type stage struct {
 
 // Run runs the stage runner assigned to stage
 func (s *stage) Run(ctx context.Context, payload Payload, options *Options) error {
+	observer := stageDurationMetric.WithLabels(string(s.Name))
+
+	timer := metrics.NewTimer(observer)
+	defer timer.ObserveDuration()
+
 	return s.runner.Run(ctx, payload, func(taskName string) bool {
 		return s.canRunTask(taskName, options)
 	})
