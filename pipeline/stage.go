@@ -6,6 +6,8 @@ import (
 	"sync"
 
 	"github.com/hashicorp/go-multierror"
+
+	"github.com/figment-networks/indexing-engine/metrics"
 )
 
 var (
@@ -61,6 +63,16 @@ func (s *stage) canRunTask(taskName string, options *Options) bool {
 	return true
 }
 
+// runTask executes a pipeline task
+func runTask(ctx context.Context, task Task, payload Payload) error {
+	observer := taskDurationMetric.WithLabels(task.GetName())
+
+	timer := metrics.NewTimer(observer)
+	defer timer.ObserveDuration()
+
+	return task.Run(ctx, payload)
+}
+
 type syncRunner struct {
 	tasks []Task
 }
@@ -69,7 +81,7 @@ type syncRunner struct {
 func (r syncRunner) Run(ctx context.Context, payload Payload, canRunTask TaskValidator) error {
 	for _, task := range r.tasks {
 		if canRunTask(task.GetName()) {
-			err := task.Run(ctx, payload)
+			err := runTask(ctx, task, payload)
 			if err != nil {
 				return err
 			}
@@ -91,7 +103,7 @@ func (ar asyncRunner) Run(ctx context.Context, payload Payload, canRunTask TaskV
 		if canRunTask(task.GetName()) {
 			wg.Add(1)
 			go func(task Task, ctx context.Context, payload Payload) {
-				if err := task.Run(ctx, payload); err != nil {
+				if err := runTask(ctx, task, payload); err != nil {
 					errCh <- err
 				}
 				wg.Done()
@@ -144,7 +156,7 @@ func (r *retryTask) GetName() string {
 func (r *retryTask) Run(ctx context.Context, p Payload) error {
 	var err error
 	for i := 0; i < r.maxRetries; i++ {
-		if err = r.task.Run(ctx, p); err != nil {
+		if err = runTask(ctx, r.task, p); err != nil {
 			if !r.isTransient(err) {
 				return err
 			}

@@ -27,7 +27,7 @@ func TestStage_Running(t *testing.T) {
 		task1.EXPECT().Run(gomock.Any(), gomock.Any()).Times(0)
 
 		task2 := mock.NewMockTask(ctrl)
-		task2.EXPECT().GetName().Return("whitelistTask").Times(1)
+		task2.EXPECT().GetName().Return("whitelistTask").Times(2)
 		task2.EXPECT().Run(gomock.Any(), gomock.Any()).Return(nil).Times(1)
 
 		s := pipeline.NewStageWithTasks("test", task1, task2)
@@ -49,8 +49,8 @@ func TestStage_SyncStage(t *testing.T) {
 		task1 := mock.NewMockTask(ctrl)
 		task2 := mock.NewMockTask(ctrl)
 
-		task1.EXPECT().GetName().Return("task1")
-		task2.EXPECT().GetName().Return("task2")
+		task1.EXPECT().GetName().Return("task1").Times(2)
+		task2.EXPECT().GetName().Return("task2").Times(2)
 
 		gomock.InOrder(
 			task1.EXPECT().Run(ctx, payloadMock).Return(nil),
@@ -74,7 +74,7 @@ func TestStage_SyncStage(t *testing.T) {
 		task1 := mock.NewMockTask(ctrl)
 		task2 := mock.NewMockTask(ctrl)
 
-		task1.EXPECT().GetName().Return("task1")
+		task1.EXPECT().GetName().Return("task1").Times(2)
 
 		task1.EXPECT().Run(ctx, payloadMock).Return(errors.New("test error"))
 		task2.EXPECT().Run(ctx, payloadMock).Return(nil).Times(0)
@@ -96,8 +96,8 @@ func TestStage_SyncStage(t *testing.T) {
 		task1 := mock.NewMockTask(ctrl)
 		task2 := mock.NewMockTask(ctrl)
 
-		task1.EXPECT().GetName().Return("task1")
-		task2.EXPECT().GetName().Return("task2")
+		task1.EXPECT().GetName().Return("task1").Times(2)
+		task2.EXPECT().GetName().Return("task2").Times(2)
 
 		task1.EXPECT().Run(ctx, payloadMock).Return(nil)
 		task2.EXPECT().Run(ctx, payloadMock).Return(errors.New("test error"))
@@ -119,8 +119,8 @@ func TestStage_SyncStage(t *testing.T) {
 		retryTask := mock.NewMockTask(ctrl)
 		task2 := mock.NewMockTask(ctrl)
 
-		retryTask.EXPECT().GetName().Return("retryTask").Times(1)
-		task2.EXPECT().GetName().Return("task2").Times(1)
+		retryTask.EXPECT().GetName().Return("retryTask").Times(3)
+		task2.EXPECT().GetName().Return("task2").Times(2)
 
 		gomock.InOrder(
 			retryTask.EXPECT().Run(ctx, payloadMock).Return(errors.New("test error")),
@@ -147,7 +147,7 @@ func TestStage_SyncStage(t *testing.T) {
 		retryTask := mock.NewMockTask(ctrl)
 		task2 := mock.NewMockTask(ctrl)
 
-		retryTask.EXPECT().GetName().Return("retryTask").Times(1)
+		retryTask.EXPECT().GetName().Return("retryTask").Times(4)
 		retryTask.EXPECT().Run(ctx, payloadMock).Return(errors.New("test error")).Times(3)
 
 		task2.EXPECT().GetName().Return("task2").Times(0)
@@ -174,8 +174,8 @@ func TestStage_AsyncStage(t *testing.T) {
 		task1 := mock.NewMockTask(ctrl)
 		task2 := mock.NewMockTask(ctrl)
 
-		task1.EXPECT().GetName().Return("task1")
-		task2.EXPECT().GetName().Return("task2")
+		task1.EXPECT().GetName().Return("task1").Times(2)
+		task2.EXPECT().GetName().Return("task2").Times(2)
 
 		task1.EXPECT().Run(ctx, payloadMock).Return(nil)
 		task2.EXPECT().Run(ctx, payloadMock).Return(nil)
@@ -197,8 +197,8 @@ func TestStage_AsyncStage(t *testing.T) {
 		task1 := mock.NewMockTask(ctrl)
 		task2 := mock.NewMockTask(ctrl)
 
-		task1.EXPECT().GetName().Return("task1")
-		task2.EXPECT().GetName().Return("task2")
+		task1.EXPECT().GetName().Return("task1").Times(2)
+		task2.EXPECT().GetName().Return("task2").Times(2)
 
 		task1.EXPECT().Run(ctx, payloadMock).Return(errors.New("test error"))
 		task2.EXPECT().Run(ctx, payloadMock).Return(nil)
@@ -220,8 +220,8 @@ func TestStage_AsyncStage(t *testing.T) {
 		task1 := mock.NewMockTask(ctrl)
 		task2 := mock.NewMockTask(ctrl)
 
-		task1.EXPECT().GetName().Return("task1")
-		task2.EXPECT().GetName().Return("task2")
+		task1.EXPECT().GetName().Return("task1").Times(2)
+		task2.EXPECT().GetName().Return("task2").Times(2)
 
 		task1.EXPECT().Run(ctx, payloadMock).Return(nil)
 		task2.EXPECT().Run(ctx, payloadMock).Return(errors.New("test error"))
@@ -243,8 +243,8 @@ func TestStage_AsyncStage(t *testing.T) {
 		task1 := mock.NewMockTask(ctrl)
 		task2 := mock.NewMockTask(ctrl)
 
-		task1.EXPECT().GetName().Return("task1")
-		task2.EXPECT().GetName().Return("task2")
+		task1.EXPECT().GetName().Return("task1").Times(2)
+		task2.EXPECT().GetName().Return("task2").Times(2)
 
 		task1.EXPECT().Run(ctx, payloadMock).Return(errors.New("test error"))
 		task2.EXPECT().Run(ctx, payloadMock).Return(errors.New("test error"))
