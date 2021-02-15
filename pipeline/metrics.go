@@ -19,6 +19,13 @@ var (
 		Tags:      []string{"stage"},
 	})
 
+	heightDurationMetric = metrics.MustNewHistogramWithTags(metrics.HistogramOptions{
+		Namespace: "indexer",
+		Subsystem: "pipeline",
+		Name:      "height_duration",
+		Desc:      "The total time spent indexing a height",
+	})
+
 	heightsTotalMetric = metrics.MustNewCounterWithTags(metrics.Options{
 		Namespace: "indexer",
 		Subsystem: "pipeline",

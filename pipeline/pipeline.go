@@ -7,6 +7,8 @@ import (
 	"sync"
 
 	"github.com/hashicorp/go-multierror"
+
+	"github.com/figment-networks/indexing-engine/metrics"
 )
 
 const (
@@ -207,11 +209,14 @@ func (p *pipeline) Start(ctx context.Context, source Source, sink Sink, options 
 	p.options = options
 
 	heightCounter := heightsTotalMetric.WithLabels()
+	durationObserver := heightDurationMetric.WithLabels()
 
 	var pipelineErr error
 	var recentPayload Payload
 	for ok := true; ok; ok = source.Next(ctx, recentPayload) {
 		payload := p.payloadFactory.GetPayload(source.Current())
+
+		timer := metrics.NewTimer(durationObserver)
 
 		pipelineErr = p.runStages(pCtx, payload, source)
 		if pipelineErr != nil {
@@ -225,6 +230,7 @@ func (p *pipeline) Start(ctx context.Context, source Source, sink Sink, options 
 			break
 		}
 
+		timer.ObserveDuration()
 		heightCounter.Inc()
 
 		payload.MarkAsProcessed()
@@ -251,11 +257,15 @@ func (p *pipeline) Run(ctx context.Context, height int64, options *Options) (Pay
 
 	payload := p.payloadFactory.GetPayload(height)
 
+	observer := heightDurationMetric.WithLabels()
+	timer := metrics.NewTimer(observer)
+
 	if err := p.runStages(pCtx, payload, NewSource()); err != nil {
 		errorsTotalMetric.WithLabels().Inc()
 		return nil, err
 	}
 
+	timer.ObserveDuration()
 	heightsTotalMetric.WithLabels().Inc()
 
 	payload.MarkAsProcessed()
