@@ -18,4 +18,11 @@ var (
 		Desc:      "The total time spent processing an indexing stage",
 		Tags:      []string{"stage"},
 	})
+
+	errorsTotalMetric = metrics.MustNewCounterWithTags(metrics.Options{
+		Namespace: "indexer",
+		Subsystem: "pipeline",
+		Name:      "errors_total",
+		Desc:      "The total number of indexing errors",
+	})
 )

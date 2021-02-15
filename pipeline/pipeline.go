@@ -232,6 +232,10 @@ func (p *pipeline) Start(ctx context.Context, source Source, sink Sink, options 
 		pipelineErr = multierror.Append(pipelineErr, err)
 	}
 
+	if pipelineErr != nil {
+		errorsTotalMetric.WithLabels().Inc()
+	}
+
 	return pipelineErr
 }
 
@@ -244,6 +248,7 @@ func (p *pipeline) Run(ctx context.Context, height int64, options *Options) (Pay
 	payload := p.payloadFactory.GetPayload(height)
 
 	if err := p.runStages(pCtx, payload, NewSource()); err != nil {
+		errorsTotalMetric.WithLabels().Inc()
 		return nil, err
 	}
 
