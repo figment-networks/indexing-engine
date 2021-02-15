@@ -206,6 +206,8 @@ func (p *pipeline) Start(ctx context.Context, source Source, sink Sink, options 
 	pCtx, _ := p.setupCtx(ctx)
 	p.options = options
 
+	heightCounter := heightsTotalMetric.WithLabels()
+
 	var pipelineErr error
 	var recentPayload Payload
 	for ok := true; ok; ok = source.Next(ctx, recentPayload) {
@@ -222,6 +224,8 @@ func (p *pipeline) Start(ctx context.Context, source Source, sink Sink, options 
 			// Stop execution when sink errors out
 			break
 		}
+
+		heightCounter.Inc()
 
 		payload.MarkAsProcessed()
 
@@ -251,6 +255,8 @@ func (p *pipeline) Run(ctx context.Context, height int64, options *Options) (Pay
 		errorsTotalMetric.WithLabels().Inc()
 		return nil, err
 	}
+
+	heightsTotalMetric.WithLabels().Inc()
 
 	payload.MarkAsProcessed()
 

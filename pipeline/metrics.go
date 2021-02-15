@@ -19,6 +19,13 @@ var (
 		Tags:      []string{"stage"},
 	})
 
+	heightsTotalMetric = metrics.MustNewCounterWithTags(metrics.Options{
+		Namespace: "indexer",
+		Subsystem: "pipeline",
+		Name:      "heights_total",
+		Desc:      "The total number of successfully indexed heights",
+	})
+
 	errorsTotalMetric = metrics.MustNewCounterWithTags(metrics.Options{
 		Namespace: "indexer",
 		Subsystem: "pipeline",
