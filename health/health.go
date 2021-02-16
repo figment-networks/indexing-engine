@@ -65,6 +65,9 @@ func (m *Monitor) AttachHttp(mux *http.ServeMux) {
 			}
 			switch ty {
 			case "db":
+				if rSt.DB == nil {
+					rSt.DB = make(map[string]interface{})
+				}
 				rSt.DB[readinesstype] = co
 			}
 		}
