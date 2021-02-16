@@ -78,6 +78,6 @@ func (m *Monitor) AttachHttp(mux *http.ServeMux) {
 		} else {
 			w.WriteHeader(http.StatusOK)
 		}
-		enc.Encode(r)
+		enc.Encode(rSt)
 	})
 }

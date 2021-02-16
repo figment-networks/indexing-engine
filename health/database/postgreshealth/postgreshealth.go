@@ -27,7 +27,7 @@ type PingCheck struct {
 
 type SizeCheck struct {
 	On     time.Time `json:"on"`
-	Size   uint64    `json:"duration"`
+	Size   uint64    `json:"size"`
 	Status string    `json:"status"`
 	Error  string    `json:"error"`
 }
