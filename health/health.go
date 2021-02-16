@@ -14,9 +14,9 @@ type Readiness struct {
 
 type Prober interface {
 	// Probe to run all the necessary checks on
-	Probe() error
+	Probe(ctx context.Context) error
 	// Readiness should return information about the readiness of resource
-	Readiness() (probetype, readinesstype string, contents interface{}, err error)
+	Readiness(ctx context.Context) (probetype, readinesstype string, contents interface{}, err error)
 }
 
 type Monitor struct {
@@ -40,14 +40,14 @@ func (m *Monitor) RunChecks(ctx context.Context, dur time.Duration) {
 		case <-tckr.C:
 			m.RLock()
 			for _, p := range m.probers {
-				p.Probe()
+				p.Probe(ctx)
 			}
 			m.RUnlock()
 		}
 	}
 }
 
-func (m *Monitor) AttachHttp(ctx context.Context, mux *http.ServeMux) {
+func (m *Monitor) AttachHttp(mux *http.ServeMux) {
 	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	})
@@ -59,7 +59,7 @@ func (m *Monitor) AttachHttp(ctx context.Context, mux *http.ServeMux) {
 		rSt := Readiness{}
 		m.RLock()
 		for _, p := range m.probers {
-			ty, readinesstype, co, err := p.Readiness()
+			ty, readinesstype, co, err := p.Readiness(r.Context())
 			if err != nil {
 				fErr = err
 			}
