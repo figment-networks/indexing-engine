@@ -230,10 +230,10 @@ func (p *pipeline) Start(ctx context.Context, source Source, sink Sink, options 
 			break
 		}
 
+		payload.MarkAsProcessed()
+
 		timer.ObserveDuration()
 		heightCounter.Inc()
-
-		payload.MarkAsProcessed()
 
 		recentPayload = payload
 	}
@@ -265,10 +265,10 @@ func (p *pipeline) Run(ctx context.Context, height int64, options *Options) (Pay
 		return nil, err
 	}
 
+	payload.MarkAsProcessed()
+
 	timer.ObserveDuration()
 	heightsTotalMetric.WithLabels().Inc()
-
-	payload.MarkAsProcessed()
 
 	return payload, nil
 }
