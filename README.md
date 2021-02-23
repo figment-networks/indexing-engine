@@ -190,14 +190,25 @@ go run example/custom/main.go
 In `metrics` package you can find simple implementation of metrics engine, that is metric system agnostic.
 Currently available engines are:
   * Prometheus (https://github.com/prometheus/client_golang)
+
 Nice to have in future:
   * Statsd (eg. https://github.com/alexcesaro/statsd)
   * Expvar (https://golang.org/pkg/expvar/)
 
 The example of how to write an engine lives in `/metrics/metrics_test.go`
 
+### Built-in metrics
+
+The indexing engine comes with a set of built-in metrics:
+
+| Name                               | Description                                       |
+|------------------------------------|---------------------------------------------------|
+| `indexer_pipeline_task_duration`   | The total time spent processing an indexing task  |
+| `indexer_pipeline_stage_duration`  | The total time spent processing an indexing stage |
+| `indexer_pipeline_height_duration` | The total time spent indexing a height            |
+| `indexer_pipeline_heights_total`   | The total number of successfully indexed heights  |
+| `indexer_pipeline_errors_total`    | The total number of indexing errors               |
+
 ## To-Dos:
 * Collect stats for every stage and every task
 * Add context cancellation
-
-

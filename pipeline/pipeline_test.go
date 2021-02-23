@@ -80,14 +80,14 @@ func TestPipeline_SetStages(t *testing.T) {
 		aggregatorTaskMock := mock.NewMockTask(ctrl)
 		cleanupTaskMock := mock.NewMockTask(ctrl)
 
-		setupTaskMock.EXPECT().GetName().Return("setupTask").Times(2)
-		fetcherTaskMock.EXPECT().GetName().Return("fetcherTask").Times(2)
-		parserTaskMock.EXPECT().GetName().Return("parserTask").Times(2)
-		validatorTaskMock.EXPECT().GetName().Return("validatorTask").Times(2)
-		syncerTaskMock.EXPECT().GetName().Return("syncerTask").Times(2)
-		sequencerTaskMock.EXPECT().GetName().Return("sequencerTask").Times(2)
-		aggregatorTaskMock.EXPECT().GetName().Return("aggregatorTask").Times(2)
-		cleanupTaskMock.EXPECT().GetName().Return("cleanupTask").Times(2)
+		setupTaskMock.EXPECT().GetName().Return("setupTask").Times(4)
+		fetcherTaskMock.EXPECT().GetName().Return("fetcherTask").Times(4)
+		parserTaskMock.EXPECT().GetName().Return("parserTask").Times(4)
+		validatorTaskMock.EXPECT().GetName().Return("validatorTask").Times(4)
+		syncerTaskMock.EXPECT().GetName().Return("syncerTask").Times(4)
+		sequencerTaskMock.EXPECT().GetName().Return("sequencerTask").Times(4)
+		aggregatorTaskMock.EXPECT().GetName().Return("aggregatorTask").Times(4)
+		cleanupTaskMock.EXPECT().GetName().Return("cleanupTask").Times(4)
 
 		p.SetTasks(pipeline.StageSetup, setupTaskMock)
 		p.SetTasks(pipeline.StageFetcher, fetcherTaskMock)
@@ -147,15 +147,15 @@ func TestPipeline_Start(t *testing.T) {
 		persistorTaskMock := mock.NewMockTask(ctrl)
 		cleanupTaskMock := mock.NewMockTask(ctrl)
 
-		setupTaskMock.EXPECT().GetName().Return("setupTask").Times(1)
-		fetcherTaskMock.EXPECT().GetName().Return("fetcherTask").Times(1)
-		parserTaskMock.EXPECT().GetName().Return("parserTask").Times(1)
-		validatorTaskMock.EXPECT().GetName().Return("validatorTask").Times(1)
-		syncerTaskMock.EXPECT().GetName().Return("syncerTask").Times(1)
-		sequencerTaskMock.EXPECT().GetName().Return("sequencerTask").Times(1)
-		aggregatorTaskMock.EXPECT().GetName().Return("aggregatorTask").Times(1)
-		persistorTaskMock.EXPECT().GetName().Return("aggregatorTask").Times(1)
-		cleanupTaskMock.EXPECT().GetName().Return("cleanupTask").Times(1)
+		setupTaskMock.EXPECT().GetName().Return("setupTask").Times(2)
+		fetcherTaskMock.EXPECT().GetName().Return("fetcherTask").Times(2)
+		parserTaskMock.EXPECT().GetName().Return("parserTask").Times(2)
+		validatorTaskMock.EXPECT().GetName().Return("validatorTask").Times(2)
+		syncerTaskMock.EXPECT().GetName().Return("syncerTask").Times(2)
+		sequencerTaskMock.EXPECT().GetName().Return("sequencerTask").Times(2)
+		aggregatorTaskMock.EXPECT().GetName().Return("aggregatorTask").Times(2)
+		persistorTaskMock.EXPECT().GetName().Return("aggregatorTask").Times(2)
+		cleanupTaskMock.EXPECT().GetName().Return("cleanupTask").Times(2)
 
 		p.SetTasks(pipeline.StageSetup, setupTaskMock)
 		p.SetTasks(pipeline.StageFetcher, fetcherTaskMock)
@@ -233,10 +233,10 @@ func TestPipeline_Start(t *testing.T) {
 		syncerTaskMock := mock.NewMockTask(ctrl)
 		cleanupTaskMock := mock.NewMockTask(ctrl)
 
-		setupTaskMock.EXPECT().GetName().Return("setupTask").Times(1)
-		parserTaskMock.EXPECT().GetName().Return("parserTask").Times(1)
-		syncerTaskMock.EXPECT().GetName().Return("syncerTask").Times(1)
-		cleanupTaskMock.EXPECT().GetName().Return("cleanupTask").Times(1)
+		setupTaskMock.EXPECT().GetName().Return("setupTask").Times(2)
+		parserTaskMock.EXPECT().GetName().Return("parserTask").Times(2)
+		syncerTaskMock.EXPECT().GetName().Return("syncerTask").Times(2)
+		cleanupTaskMock.EXPECT().GetName().Return("cleanupTask").Times(2)
 
 		p.SetTasks(pipeline.StageSetup, setupTaskMock)
 		p.SetTasks(pipeline.StageParser, parserTaskMock)
@@ -295,7 +295,7 @@ func TestPipeline_Start(t *testing.T) {
 					shouldRun = false
 				}
 
-				mockTask.EXPECT().GetName().Return("mockTask").Times(1)
+				mockTask.EXPECT().GetName().Return("mockTask").Times(2)
 				mockTask.EXPECT().Run(gomock.Any(), gomock.Any()).Return(returnVal).Times(1)
 				p.SetTasks(stage, mockTask)
 			}
@@ -321,12 +321,12 @@ func TestPipeline_Start(t *testing.T) {
 		p := pipeline.NewDefault(payloadFactoryMock)
 
 		aggregatorTask := mock.NewMockTask(ctrl)
-		aggregatorTask.EXPECT().GetName().Return("aggregatorTask").Times(1)
+		aggregatorTask.EXPECT().GetName().Return("aggregatorTask").Times(2)
 		aggregatorTask.EXPECT().Run(gomock.Any(), gomock.Any()).Return(stageErr).Times(1)
 		p.SetTasks(pipeline.StageAggregator, aggregatorTask)
 
 		sequencerTask := mock.NewMockTask(ctrl)
-		sequencerTask.EXPECT().GetName().Return("sequencerTask").Times(1)
+		sequencerTask.EXPECT().GetName().Return("sequencerTask").Times(2)
 		sequencerTask.EXPECT().Run(gomock.Any(), gomock.Any()).Return(nil).Times(1)
 		p.SetTasks(pipeline.StageSequencer, sequencerTask)
 
@@ -362,7 +362,7 @@ func TestPipeline_NewCustom(t *testing.T) {
 			pipeline.StageParser, pipeline.StageAggregator, pipeline.StageSetup,
 		} {
 			mockTask := mock.NewMockTask(ctrl)
-			mockTask.EXPECT().GetName().Return("mockTask").Times(1)
+			mockTask.EXPECT().GetName().Return("mockTask").Times(2)
 
 			call := mockTask.EXPECT().Run(gomock.Any(), gomock.Any()).Return(nil).Times(1)
 			runCalls = append(runCalls, call)
@@ -394,7 +394,7 @@ func TestPipeline_NewCustom(t *testing.T) {
 
 		for i := 0; i < 3; i++ {
 			mockTask := mock.NewMockTask(ctrl)
-			mockTask.EXPECT().GetName().Return("mockTask").Times(1)
+			mockTask.EXPECT().GetName().Return("mockTask").Times(2)
 			mockTask.EXPECT().Run(gomock.Any(), gomock.Any()).Return(nil).Times(1)
 			mockTasks[i] = mockTask
 		}
@@ -436,11 +436,11 @@ func TestPipeline_AddStageBefore(t *testing.T) {
 
 		for _, stage := range stages {
 			existingStageTask := mock.NewMockTask(ctrl)
-			existingStageTask.EXPECT().GetName().Return("mockTask").Times(1)
+			existingStageTask.EXPECT().GetName().Return("mockTask").Times(2)
 			p.SetTasks(stage.existingName, existingStageTask)
 
 			beforeTask := mock.NewMockTask(ctrl)
-			beforeTask.EXPECT().GetName().Return("mockTask").Times(1)
+			beforeTask.EXPECT().GetName().Return("mockTask").Times(2)
 			p.AddStageBefore(stage.existingName, pipeline.NewStageWithTasks(stage.name, beforeTask))
 
 			gomock.InOrder(
@@ -467,7 +467,7 @@ func TestPipeline_AddStageBefore(t *testing.T) {
 		p := pipeline.NewDefault(payloadFactoryMock)
 
 		beforeTask := mock.NewMockTask(ctrl)
-		beforeTask.EXPECT().GetName().Return("mockTask").Times(1)
+		beforeTask.EXPECT().GetName().Return("mockTask").Times(2)
 		beforeTask.EXPECT().Run(gomock.Any(), gomock.Any()).Return(stageErr).Times(1)
 		p.AddStageBefore(pipeline.StageFetcher, pipeline.NewStageWithTasks("beforeFetcher", beforeTask))
 
@@ -506,11 +506,11 @@ func TestPipeline_AddStageAfter(t *testing.T) {
 
 		for _, stage := range stages {
 			existingStageTask := mock.NewMockTask(ctrl)
-			existingStageTask.EXPECT().GetName().Return("mockTask").Times(1)
+			existingStageTask.EXPECT().GetName().Return("mockTask").Times(2)
 			p.SetTasks(stage.existingName, existingStageTask)
 
 			afterTask := mock.NewMockTask(ctrl)
-			afterTask.EXPECT().GetName().Return("mockTask").Times(1)
+			afterTask.EXPECT().GetName().Return("mockTask").Times(2)
 			p.AddStageAfter(stage.existingName, pipeline.NewStageWithTasks(stage.name, afterTask))
 
 			gomock.InOrder(
@@ -537,12 +537,12 @@ func TestPipeline_AddStageAfter(t *testing.T) {
 		p := pipeline.NewDefault(payloadFactoryMock)
 
 		afterTask := mock.NewMockTask(ctrl)
-		afterTask.EXPECT().GetName().Return("mockTask").Times(1)
+		afterTask.EXPECT().GetName().Return("mockTask").Times(2)
 		afterTask.EXPECT().Run(gomock.Any(), gomock.Any()).Return(stageErr).Times(1)
 		p.AddStageAfter(pipeline.StageFetcher, pipeline.NewStageWithTasks("afterFetcher", afterTask))
 
 		existingStageTask := mock.NewMockTask(ctrl)
-		existingStageTask.EXPECT().GetName().Return("mockTask").Times(1)
+		existingStageTask.EXPECT().GetName().Return("mockTask").Times(2)
 		existingStageTask.EXPECT().Run(gomock.Any(), gomock.Any()).Return(nil).Times(1)
 		p.SetTasks(pipeline.StageFetcher, existingStageTask)
 
@@ -576,7 +576,7 @@ func TestPipeline_StagesBlacklist(t *testing.T) {
 				calls = 1
 			}
 			mockTask := mock.NewMockTask(ctrl)
-			mockTask.EXPECT().GetName().Return("mockTask").Times(calls)
+			mockTask.EXPECT().GetName().Return("mockTask").Times(calls * 2)
 			mockTask.EXPECT().Run(gomock.Any(), gomock.Any()).Return(nil).Times(calls)
 			p.SetTasks(stage, mockTask)
 		}
@@ -600,8 +600,8 @@ func TestPipeline_RetryStage(t *testing.T) {
 		task1 := mock.NewMockTask(ctrl)
 		task2 := mock.NewMockTask(ctrl)
 
-		task1.EXPECT().GetName().Return("task1").Times(1)
-		task2.EXPECT().GetName().Return("task2").Times(1)
+		task1.EXPECT().GetName().Return("task1").Times(2)
+		task2.EXPECT().GetName().Return("task2").Times(2)
 
 		gomock.InOrder(
 			task1.EXPECT().Run(gomock.Any(), gomock.Any()).Return(nil).Times(1),
@@ -627,7 +627,7 @@ func TestPipeline_RetryStage(t *testing.T) {
 		p := pipeline.NewCustom(payloadFactoryMock)
 
 		task1 := mock.NewMockTask(ctrl)
-		task1.EXPECT().GetName().Return("task1").Times(2)
+		task1.EXPECT().GetName().Return("task1").Times(4)
 
 		gomock.InOrder(
 			task1.EXPECT().Run(gomock.Any(), gomock.Any()).Return(errors.New("test err")).Times(1),
@@ -653,7 +653,7 @@ func TestPipeline_RetryStage(t *testing.T) {
 		p := pipeline.NewCustom(payloadFactoryMock)
 
 		task1 := mock.NewMockTask(ctrl)
-		task1.EXPECT().GetName().Return("task1").Times(3)
+		task1.EXPECT().GetName().Return("task1").Times(6)
 		task1.EXPECT().Run(gomock.Any(), gomock.Any()).Return(errors.New("test error")).Times(3)
 
 		p.AddStage(pipeline.NewStageWithTasks("test_stage", task1))
