@@ -15,7 +15,7 @@ Service produces a set of metrics
 ### Database
 - `health_database_ping` - Duration how long it takes to ping the database (float seconds)
     - Tags:
-        - `database_type` - The name od database type (eg. `postgres`)
+        - `database_type` - The name of database type (eg. `postgres`)
 - `health_database_size` - Current size of database
     - Tags:
-        - `database_type` - The name od database type (eg. `postgres`)
+        - `database_type` - The name of database type (eg. `postgres`)
