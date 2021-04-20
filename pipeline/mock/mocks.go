@@ -120,20 +120,6 @@ func (mr *MockSourceMockRecorder) Current() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Current", reflect.TypeOf((*MockSource)(nil).Current))
 }
 
-// Skip mocks base method
-func (m *MockSource) Skip(stageName pipeline.StageName) bool {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Skip")
-	ret0, _ := ret[0].(bool)
-	return ret0
-}
-
-// Skip indicates an expected call of Skip
-func (mr *MockSourceMockRecorder) Skip() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Skip", reflect.TypeOf((*MockSource)(nil).Skip))
-}
-
 // Err mocks base method
 func (m *MockSource) Err() error {
 	m.ctrl.T.Helper()
@@ -160,6 +146,20 @@ func (m *MockSource) Next(arg0 context.Context, arg1 pipeline.Payload) bool {
 func (mr *MockSourceMockRecorder) Next(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Next", reflect.TypeOf((*MockSource)(nil).Next), arg0, arg1)
+}
+
+// Skip mocks base method
+func (m *MockSource) Skip(arg0 pipeline.StageName) bool {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Skip", arg0)
+	ret0, _ := ret[0].(bool)
+	return ret0
+}
+
+// Skip indicates an expected call of Skip
+func (mr *MockSourceMockRecorder) Skip(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Skip", reflect.TypeOf((*MockSource)(nil).Skip), arg0)
 }
 
 // MockSink is a mock of Sink interface
