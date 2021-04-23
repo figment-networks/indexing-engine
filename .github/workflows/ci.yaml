@@ -1,4 +1,4 @@
-name: Indexing engine
+name: build
 # This workflow is triggered on pushes to the repository only when pushing new tag.
 on:
   push:

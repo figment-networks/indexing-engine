@@ -1,4 +1,4 @@
-# Indexing Engine
+# Indexing Engine ![Build status](https://github.com/figment-networks/indexing-engine/workflows/build/badge.svg)
 
 Made with :heart: by<br/>
 <a href="https://figment.io"><img alt="Figment" src="assets/figment-logo.svg" height="32px" align="bottom"/></a>
