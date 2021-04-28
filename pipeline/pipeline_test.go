@@ -7,9 +7,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/figment-networks/indexing-engine/pipeline"
-	mock "github.com/figment-networks/indexing-engine/pipeline/mock"
 	"github.com/golang/mock/gomock"
+
+	"github.com/figment-networks/indexing-engine/pipeline"
+	"github.com/figment-networks/indexing-engine/pipeline/mock"
 )
 
 var (
