@@ -23,7 +23,7 @@ func NewPoolWorker(client Client) *PoolWorker {
 // Run starts the pool worker
 func (pw *PoolWorker) Run(handler ResponseHandler, wg *sync.WaitGroup) {
 	for height := range pw.channel {
-		pw.Process(height, handler)
+		pw.process(height, handler)
 
 		if wg != nil {
 			wg.Done()
@@ -31,11 +31,11 @@ func (pw *PoolWorker) Run(handler ResponseHandler, wg *sync.WaitGroup) {
 	}
 }
 
-// Process handles the processing of a given height
-func (pw *PoolWorker) Process(height int64, handler ResponseHandler) {
+// process handles the processing of a given height
+func (pw *PoolWorker) process(height int64, handler ResponseHandler) {
 	err := pw.client.Send(Request{Height: height})
 	if err != nil {
-		pw.Reconnect()
+		pw.reconnect()
 		return
 	}
 
@@ -43,15 +43,15 @@ func (pw *PoolWorker) Process(height int64, handler ResponseHandler) {
 
 	err = pw.client.Receive(&res)
 	if err != nil {
-		pw.Reconnect()
+		pw.reconnect()
 		return
 	}
 
 	handler(res)
 }
 
-// Reconnect reestablishes the connection with a worker
-func (pw *PoolWorker) Reconnect() error {
+// reconnect reestablishes the connection with a worker
+func (pw *PoolWorker) reconnect() error {
 	time.Sleep(pw.backoff.Delay())
 
 	pw.backoff.Attempt()
