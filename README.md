@@ -10,6 +10,7 @@ The library consists of the following packages:
 
 - [`pipeline`](pipeline)
 - [`worker`](worker)
+- [`datalake`](datalake)
 - [`metrics`](metrics)
 - [`health`](health)
 - [`store`](store)
