@@ -9,33 +9,26 @@ import (
 
 // Resource represents an object being stored
 type Resource struct {
-	Name string
 	Data []byte
 }
 
 // NewResource creates a resource
-func NewResource(name string, data []byte) *Resource {
-	return &Resource{
-		Name: name,
-		Data: data,
-	}
+func NewResource(data []byte) *Resource {
+	return &Resource{Data: data}
 }
 
 // NewJSONResource creates a JSON resource
-func NewJSONResource(name string, obj interface{}) (*Resource, error) {
+func NewJSONResource(obj interface{}) (*Resource, error) {
 	data, err := json.Marshal(obj)
 	if err != nil {
 		return nil, err
 	}
 
-	return &Resource{
-		Name: name,
-		Data: data,
-	}, nil
+	return &Resource{Data: data}, nil
 }
 
 // NewBinaryResource creates a binary resource
-func NewBinaryResource(name string, obj interface{}) (*Resource, error) {
+func NewBinaryResource(obj interface{}) (*Resource, error) {
 	buf := bytes.Buffer{}
 	enc := gob.NewEncoder(&buf)
 
@@ -44,15 +37,12 @@ func NewBinaryResource(name string, obj interface{}) (*Resource, error) {
 		return nil, err
 	}
 
-	return &Resource{
-		Name: name,
-		Data: buf.Bytes(),
-	}, nil
+	return &Resource{Data: buf.Bytes()}, nil
 }
 
 // NewBase64Resource creates a Base64 resource
-func NewBase64Resource(name string, obj interface{}) (*Resource, error) {
-	res, err := NewBinaryResource(name, obj)
+func NewBase64Resource(obj interface{}) (*Resource, error) {
+	res, err := NewBinaryResource(obj)
 	if err != nil {
 		return nil, err
 	}
@@ -62,10 +52,7 @@ func NewBase64Resource(name string, obj interface{}) (*Resource, error) {
 
 	base64.StdEncoding.Encode(data, res.Data)
 
-	return &Resource{
-		Name: name,
-		Data: data,
-	}, nil
+	return &Resource{Data: data}, nil
 }
 
 // ScanJSON parses the resource data as JSON

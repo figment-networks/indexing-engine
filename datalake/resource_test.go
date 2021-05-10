@@ -7,16 +7,15 @@ import (
 )
 
 func TestNewResource(t *testing.T) {
-	res := NewResource("resource", []byte("example data"))
+	res := NewResource([]byte("example data"))
 
-	assert.Equal(t, "resource", res.Name)
 	assert.Equal(t, []byte("example data"), res.Data)
 }
 
 func TestNewJSONResource(t *testing.T) {
 	data := map[string]interface{}{"example": "data"}
 
-	res, err := NewJSONResource("resource", data)
+	res, err := NewJSONResource(data)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -25,7 +24,7 @@ func TestNewJSONResource(t *testing.T) {
 }
 
 func TestNewBinaryResource(t *testing.T) {
-	res, err := NewBinaryResource("resource", 42)
+	res, err := NewBinaryResource(42)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -34,7 +33,7 @@ func TestNewBinaryResource(t *testing.T) {
 }
 
 func TestNewBase64Resource(t *testing.T) {
-	res, err := NewBase64Resource("resource", "example data")
+	res, err := NewBase64Resource("example data")
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -29,11 +29,11 @@ func TestDataLake_StoreResource(t *testing.T) {
 	mockStorage := mock.NewMockStorage(mockCtrl)
 
 	dl := NewDataLake("oasis", "mainnet", mockStorage)
-	res := NewResource("validators", []byte("example data"))
+	res := NewResource([]byte("example data"))
 
 	mockStorage.EXPECT().Store(res.Data, "oasis", "mainnet", "validators")
 
-	dl.StoreResource(res)
+	dl.StoreResource(res, "validators")
 }
 
 func TestDataLake_StoreResourceAtHeight(t *testing.T) {
@@ -43,9 +43,9 @@ func TestDataLake_StoreResourceAtHeight(t *testing.T) {
 	mockStorage := mock.NewMockStorage(mockCtrl)
 
 	dl := NewDataLake("oasis", "mainnet", mockStorage)
-	res := NewResource("validators", []byte("example data"))
+	res := NewResource([]byte("example data"))
 
 	mockStorage.EXPECT().Store(res.Data, "oasis", "mainnet", "height", "2000", "validators")
 
-	dl.StoreResourceAtHeight(res, 2000)
+	dl.StoreResourceAtHeight(res, "validators", 2000)
 }

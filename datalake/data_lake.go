@@ -20,8 +20,8 @@ func NewDataLake(network string, chain string, storage Storage) *DataLake {
 }
 
 // StoreResource stores the resource data
-func (dl *DataLake) StoreResource(res *Resource) error {
-	path := dl.resourcePath(res.Name)
+func (dl *DataLake) StoreResource(res *Resource, name string) error {
+	path := dl.resourcePath(name)
 
 	return dl.storage.Store(res.Data, path...)
 }
@@ -42,10 +42,7 @@ func (dl *DataLake) RetrieveResource(name string) (*Resource, error) {
 		return nil, err
 	}
 
-	return &Resource{
-		Name: name,
-		Data: data,
-	}, nil
+	return &Resource{Data: data}, nil
 }
 
 func (dl *DataLake) resourcePath(name string) []string {
@@ -53,8 +50,8 @@ func (dl *DataLake) resourcePath(name string) []string {
 }
 
 // StoreResourceAtHeight stores the resource data at the given height
-func (dl *DataLake) StoreResourceAtHeight(res *Resource, height int64) error {
-	path := dl.resourceAtHeightPath(res.Name, height)
+func (dl *DataLake) StoreResourceAtHeight(res *Resource, name string, height int64) error {
+	path := dl.resourceAtHeightPath(name, height)
 
 	return dl.storage.Store(res.Data, path...)
 }
@@ -75,10 +72,7 @@ func (dl *DataLake) RetrieveResourceAtHeight(name string, height int64) (*Resour
 		return nil, err
 	}
 
-	return &Resource{
-		Name: name,
-		Data: data,
-	}, nil
+	return &Resource{Data: data}, nil
 }
 
 func (dl *DataLake) resourceAtHeightPath(name string, height int64) []string {

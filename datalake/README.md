@@ -11,7 +11,7 @@ The package supports the following storage providers:
 
 ## Usage
 
-Let's assume we are in the process of indexing the Oasis blockchain, we fetched a list of validators from a node and we want to store that data in an S3 bucket.
+Let's assume we are in the process of indexing the Oasis blockchain, we fetched a slice of validators from a node and we want to store that data in an S3 bucket.
 
 ### Setting up a data lake
 
@@ -33,16 +33,14 @@ dl := datalake.NewDataLake("oasis", "mainnet", storage)
 
 ### Serializing a resource
 
-The next step is creating a resource object by serializing our list of validators into the JSON format.
+The next step is creating a resource object by serializing our slice of validators into the JSON format.
 
 ```go
-res, err := datalake.NewJSONResource("validators.json", validators)
+res, err := datalake.NewJSONResource(validators)
 if err != nil {
   log.Fatal(err)
 }
 ```
-
-In the example above, the `validators` variable points to a slice of validators and `validators.json` is an arbitrary name used to reference the resource.
 
 The package supports the following serialization formats:
 
@@ -55,13 +53,15 @@ The package supports the following serialization formats:
 Once the resource object is created, we can store it in the data lake with the following code:
 
 ```go
-err := dl.StoreResource(res)
+err := dl.StoreResource(res, "validators.json")
 if err != nil {
   log.Fatal(err)
 }
 ```
 
-In case of the S3 storage, the resource is stored in the bucket under the `oasis/mainnet/validators.json` key.
+In the example above, `validators.json` is an arbitrary name used to reference the resource.
+
+As a result, the resource is stored in the S3 bucket under the `oasis/mainnet/validators.json` key.
 
 ### Retrieving a resource
 
@@ -107,16 +107,16 @@ The method returns `true` if the resource exists in the data lake and `false` ot
 
 ### Storing a resource at height
 
-In case we want to store data associated with a specific height (such as transactions), we need to use the `StoreResourceAtHeight` method and pass the height number as the second parameter.
+In case we want to store data associated with a specific height (such as transactions), we need to use the `StoreResourceAtHeight` method and pass the height number as the last parameter.
 For example:
 
 ```go
-res, err := datalake.NewJSONResource("transactions.json", transactions)
+res, err := datalake.NewJSONResource(transactions)
 if err != nil {
   log.Fatal(err)
 }
 
-err = dl.StoreResourceAtHeight(res, 3000000)
+err = dl.StoreResourceAtHeight(res, "transactions.json", 3000000)
 if err != nil {
   log.Fatal(err)
 }
