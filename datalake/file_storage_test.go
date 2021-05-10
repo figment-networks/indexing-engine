@@ -86,7 +86,7 @@ func TestFileStorage_IsStored(t *testing.T) {
 
 	stored, err := fe.IsStored("path", "to", "file")
 
-	assert.NotNil(t, err)
+	assert.Nil(t, err)
 	assert.False(t, stored)
 
 	err = fe.Store([]byte{}, "path", "to", "file")

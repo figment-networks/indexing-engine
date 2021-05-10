@@ -1,6 +1,7 @@
 package datalake
 
 import (
+	"errors"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -43,6 +44,9 @@ func (fe *fileStorage) Store(data []byte, path ...string) error {
 func (fe *fileStorage) IsStored(path ...string) (bool, error) {
 	info, err := os.Stat(fe.fileName(path))
 	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return false, nil
+		}
 		return false, err
 	}
 
