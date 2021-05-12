@@ -36,7 +36,10 @@ func TestDataLake_StoreResource(t *testing.T) {
 		EXPECT().
 		Store(res.Data, "oasis", "mainnet", "validators")
 
-	dl.StoreResource(res, "validators")
+	err := dl.StoreResource(res, "validators")
+	if err != nil {
+		t.Fatal(err)
+	}
 }
 
 func TestDataLake_StoreResource_BlankName(t *testing.T) {
@@ -109,7 +112,10 @@ func TestDataLake_StoreResourceAtHeight(t *testing.T) {
 		EXPECT().
 		Store(res.Data, "oasis", "mainnet", "height", "2000", "transactions")
 
-	dl.StoreResourceAtHeight(res, "transactions", 2000)
+	err := dl.StoreResourceAtHeight(res, "transactions", 2000)
+	if err != nil {
+		t.Fatal(err)
+	}
 }
 
 func TestDataLake_StoreResourceAtHeight_BlankName(t *testing.T) {
