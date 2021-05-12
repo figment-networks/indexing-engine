@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 
-	"github.com/figment-networks/indexing-engine/example/custom/indexing"
+	"github.com/figment-networks/indexing-engine/pipeline/example/default/indexing"
 )
 
 func main() {

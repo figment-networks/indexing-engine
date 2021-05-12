@@ -3,6 +3,7 @@ package indexing
 import (
 	"context"
 	"fmt"
+
 	"github.com/figment-networks/indexing-engine/pipeline"
 )
 
