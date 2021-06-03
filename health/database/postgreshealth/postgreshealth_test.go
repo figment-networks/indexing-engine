@@ -17,7 +17,7 @@ func Example() {
 	// Your database
 	db := &sql.DB{}
 
-	dbMonitor := NewPostgresMonitorWithMetrics(db, logger)
+	dbMonitor := NewPostgresMonitorsWithMetrics("", db, logger)
 	monitor := &health.Monitor{}
 	monitor.AddProber(ctx, dbMonitor)
 	go monitor.RunChecks(ctx, 1*time.Second)
