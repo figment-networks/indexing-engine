@@ -13,11 +13,6 @@ import (
 	"github.com/figment-networks/indexing-engine/health/database"
 )
 
-var (
-	pingPostgres *metrics.GroupObserver
-	sizePostgres *metrics.GroupGauge
-)
-
 type PingCheck struct {
 	On       time.Time     `json:"on"`
 	Duration time.Duration `json:"duration"`
@@ -36,18 +31,28 @@ type PostgresMonitor struct {
 	pc PingCheck
 	sc SizeCheck
 
-	db *sql.DB
-	l  *zap.Logger
+	pingM metrics.Observer
+	sizeM metrics.Gauge
+
+	name string
+	db   *sql.DB
+	l    *zap.Logger
 }
 
-func NewPostgresMonitor(db *sql.DB, l *zap.Logger) *PostgresMonitor {
-	return &PostgresMonitor{db: db, l: l}
+func NewPostgresMonitor(name string, db *sql.DB, l *zap.Logger) *PostgresMonitor {
+	return &PostgresMonitor{name: name, db: db, l: l}
 }
 
 func NewPostgresMonitorWithMetrics(db *sql.DB, l *zap.Logger) *PostgresMonitor {
-	pingPostgres = database.PingMetric.WithLabels("postgres")
-	sizePostgres = database.SizeMetric.WithLabels("postgres")
-	return NewPostgresMonitor(db, l)
+	return NewPostgresMonitorsWithMetrics("", db, l)
+}
+
+func NewPostgresMonitorsWithMetrics(name string, db *sql.DB, l *zap.Logger) *PostgresMonitor {
+	pm := NewPostgresMonitor(name, db, l)
+
+	pm.pingM = database.PingMetric.WithLabels("postgres", name)
+	pm.sizeM = database.SizeMetric.WithLabels("postgres", name)
+	return pm
 }
 
 func (m *PostgresMonitor) Probe(ctx context.Context) (err error) {
@@ -58,11 +63,15 @@ func (m *PostgresMonitor) Probe(ctx context.Context) (err error) {
 	return m.dbSize(ctx)
 }
 
-func (m *PostgresMonitor) Readiness(ctx context.Context) (probetype, redinesstype string, contents interface{}, err error) {
+func (m *PostgresMonitor) Readiness(ctx context.Context) (probetype, redinesstype, name string, contents interface{}, err error) {
 	tCtx, cancel := context.WithTimeout(ctx, time.Second*3)
 	defer cancel()
 	err = m.ping(tCtx)
-	return "db", "postgres", m.pc, err
+	return "db", "postgres", m.name, m.pc, err
+}
+
+func (m *PostgresMonitor) Liveness(ctx context.Context) (probetype, redinesstype, name string, contents interface{}, err error) {
+	return "db", "postgres", m.name, nil, nil
 }
 
 func (m *PostgresMonitor) ping(ctx context.Context) (err error) {
@@ -77,8 +86,9 @@ func (m *PostgresMonitor) ping(ctx context.Context) (err error) {
 		m.pc.Error = err.Error()
 		m.l.Error("[Health][Database][Postgres] Error pinging database", zap.Error(err))
 	}
-
-	pingPostgres.Observe(m.pc.Duration.Seconds())
+	if m.pingM != nil {
+		m.pingM.Observe(m.pc.Duration.Seconds())
+	}
 	return err
 }
 
@@ -92,7 +102,7 @@ func (m *PostgresMonitor) dbSize(ctx context.Context) error {
 	if row == nil {
 		m.sc.Status = "err"
 		m.l.Error("[Health][Database][Postgres] Error getting database size")
-		return errors.New("Error getting database size")
+		return errors.New("error getting database size")
 	}
 	err := row.Err()
 	if err != nil {
@@ -108,7 +118,8 @@ func (m *PostgresMonitor) dbSize(ctx context.Context) error {
 		m.l.Error("[Health][Database][Postgres] Error getting database size", zap.Error(err))
 		return err
 	}
-
-	sizePostgres.Set(float64(m.sc.Size))
+	if m.sizeM != nil {
+		m.sizeM.Set(float64(m.sc.Size))
+	}
 	return nil
 }

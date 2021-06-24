@@ -9,14 +9,19 @@ import (
 )
 
 type Readiness struct {
-	DB map[string]interface{} `json:"db"`
+	DB map[string]map[string]interface{} `json:"db"`
+}
+
+type Liveness struct {
 }
 
 type Prober interface {
 	// Probe to run all the necessary checks on
 	Probe(ctx context.Context) error
 	// Readiness should return information about the readiness of resource
-	Readiness(ctx context.Context) (probetype, readinesstype string, contents interface{}, err error)
+	Readiness(ctx context.Context) (probetype, readinesstype string, name string, contents interface{}, err error)
+	// Liveness should return information about the liveness of resource
+	Liveness(ctx context.Context) (probetype, livenesstype string, name string, contents interface{}, err error)
 }
 
 type Monitor struct {
@@ -52,6 +57,37 @@ func (m *Monitor) AttachHttp(mux *http.ServeMux) {
 		w.WriteHeader(http.StatusOK)
 	})
 
+	mux.HandleFunc("/liveness", func(w http.ResponseWriter, r *http.Request) {
+		enc := json.NewEncoder(w)
+
+		var fErr error
+		rSt := Liveness{}
+
+		m.RLock()
+		for _, p := range m.probers {
+			_, _, _, _, err := p.Liveness(r.Context())
+			if err != nil {
+				fErr = err
+				break
+			} /*
+				switch ty {
+				case "db":
+					if rSt.DB == nil {
+						rSt.DB = make(map[string]interface{})
+					}
+					rSt.DB[readinesstype] = co
+				}*/
+		}
+		m.RUnlock()
+
+		if fErr != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+		} else {
+			w.WriteHeader(http.StatusOK)
+		}
+		enc.Encode(rSt)
+	})
+
 	mux.HandleFunc("/readiness", func(w http.ResponseWriter, r *http.Request) {
 		enc := json.NewEncoder(w)
 
@@ -59,16 +95,22 @@ func (m *Monitor) AttachHttp(mux *http.ServeMux) {
 		rSt := Readiness{}
 		m.RLock()
 		for _, p := range m.probers {
-			ty, readinesstype, co, err := p.Readiness(r.Context())
+			ty, readinesstype, name, co, err := p.Readiness(r.Context())
 			if err != nil {
 				fErr = err
 			}
 			switch ty {
 			case "db":
 				if rSt.DB == nil {
-					rSt.DB = make(map[string]interface{})
+					rSt.DB = make(map[string]map[string]interface{})
 				}
-				rSt.DB[readinesstype] = co
+
+				ndb, ok := rSt.DB[readinesstype]
+				if !ok {
+					ndb = make(map[string]interface{})
+				}
+				ndb[name] = co
+				rSt.DB[readinesstype] = ndb
 			}
 		}
 		m.RUnlock()

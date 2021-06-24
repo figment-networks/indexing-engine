@@ -8,7 +8,7 @@ var (
 		Subsystem: "database",
 		Name:      "ping",
 		Desc:      "Duration how long it takes to ping",
-		Tags:      []string{"database_type"},
+		Tags:      []string{"database_type", "name"},
 	})
 
 	SizeMetric = metrics.MustNewGaugeWithTags(metrics.Options{
@@ -16,6 +16,6 @@ var (
 		Subsystem: "database",
 		Name:      "size",
 		Desc:      "Current size of database",
-		Tags:      []string{"database_type"},
+		Tags:      []string{"database_type", "name"},
 	})
 )

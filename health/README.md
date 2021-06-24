@@ -8,6 +8,7 @@ It's written in a way so it would be easily extensible. Any structure fulfilling
 
 - `/health` - Endpoint that always return 200 for dumb health check
 - `/readiness` - Endpoint meant to return information from different probes and return meaningful information about is service ready for connecting it to the traffic.
+- `/liveness` - Endpoint meant to return information from different probes and return meaningful information about is service healthy at all.
 
 ## Metrics
 Service produces a set of metrics
@@ -16,6 +17,8 @@ Service produces a set of metrics
 - `health_database_ping` - Duration how long it takes to ping the database (float seconds)
     - Tags:
         - `database_type` - The name of database type (eg. `postgres`)
+        - `name` - The name of database (eg. `search-cosmos`)
 - `health_database_size` - Current size of database
     - Tags:
         - `database_type` - The name of database type (eg. `postgres`)
+        - `name` - The name of database (eg. `search-cosmos`)
