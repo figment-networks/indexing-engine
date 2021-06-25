@@ -16,7 +16,7 @@ type RewardStore interface {
 }
 
 type SearchStoreCaller interface {
-	GetStoreSession(ctx context.Context) (SearchStore, error)
+	GetSearchSession(ctx context.Context) (SearchStore, error)
 }
 
 type SearchStore interface {
