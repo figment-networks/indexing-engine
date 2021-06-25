@@ -11,8 +11,7 @@ const (
 )
 
 func NewSequencerTask() pipeline.Task {
-	return &SequencerTask{
-	}
+	return &SequencerTask{}
 }
 
 type SequencerTask struct {
@@ -22,7 +21,7 @@ func (t *SequencerTask) GetName() string {
 	return SequencerTaskName
 }
 
-func (t *SequencerTask) Run(ctx context.Context,  p pipeline.Payload) error {
+func (t *SequencerTask) Run(ctx context.Context, p pipeline.Payload) error {
 	payload := p.(*payload)
 	fmt.Println("task: ", t.GetName(), payload.CurrentHeight)
 	return nil

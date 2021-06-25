@@ -13,6 +13,11 @@ import (
 	"github.com/figment-networks/indexing-engine/health/database"
 )
 
+var (
+	pingPostgres *metrics.GroupObserver
+	sizePostgres *metrics.GroupGauge
+)
+
 type PingCheck struct {
 	On       time.Time     `json:"on"`
 	Duration time.Duration `json:"duration"`
@@ -86,9 +91,11 @@ func (m *PostgresMonitor) ping(ctx context.Context) (err error) {
 		m.pc.Error = err.Error()
 		m.l.Error("[Health][Database][Postgres] Error pinging database", zap.Error(err))
 	}
+
 	if m.pingM != nil {
 		m.pingM.Observe(m.pc.Duration.Seconds())
 	}
+
 	return err
 }
 
@@ -118,8 +125,10 @@ func (m *PostgresMonitor) dbSize(ctx context.Context) error {
 		m.l.Error("[Health][Database][Postgres] Error getting database size", zap.Error(err))
 		return err
 	}
+
 	if m.sizeM != nil {
 		m.sizeM.Set(float64(m.sc.Size))
 	}
+
 	return nil
 }

@@ -11,8 +11,7 @@ const (
 )
 
 func NewFetcherTask() pipeline.Task {
-	return &FetcherTask{
-	}
+	return &FetcherTask{}
 }
 
 type FetcherTask struct {
