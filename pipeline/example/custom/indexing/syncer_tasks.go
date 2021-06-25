@@ -11,8 +11,7 @@ const (
 )
 
 func NewSyncerTask() pipeline.Task {
-	return &SyncerTask{
-	}
+	return &SyncerTask{}
 }
 
 type SyncerTask struct {
@@ -22,7 +21,7 @@ func (t *SyncerTask) GetName() string {
 	return SyncerTaskName
 }
 
-func (t *SyncerTask) Run(ctx context.Context,  p pipeline.Payload) error {
+func (t *SyncerTask) Run(ctx context.Context, p pipeline.Payload) error {
 	payload := (p).(*payload)
 	fmt.Println("task: ", t.GetName(), payload.CurrentHeight)
 	return nil

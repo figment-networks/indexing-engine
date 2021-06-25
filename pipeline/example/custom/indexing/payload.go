@@ -13,14 +13,14 @@ var (
 	}
 
 	_ pipeline.PayloadFactory = (*payloadFactory)(nil)
-	_ pipeline.Payload = (*payload)(nil)
+	_ pipeline.Payload        = (*payload)(nil)
 )
 
 func NewPayloadFactory() *payloadFactory {
 	return &payloadFactory{}
 }
 
-type payloadFactory struct {}
+type payloadFactory struct{}
 
 func (pf *payloadFactory) GetPayload(currentHeight int64) pipeline.Payload {
 	payload := payloadPool.Get().(*payload)
