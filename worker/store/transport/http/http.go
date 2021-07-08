@@ -12,6 +12,41 @@ import (
 	"github.com/figment-networks/indexing-engine/worker/store"
 )
 
+// roundRobin can be used to get the next url from a list of given urls,
+// starting with the first.
+type roundRobin struct {
+	urls []string
+	next int
+	len  int
+	lock sync.Mutex
+}
+
+func newRoundRobin(urls []string) *roundRobin {
+	return &roundRobin{
+		urls: urls,
+		len:  len(urls),
+	}
+}
+
+// getNext returns the next url in the list.
+func (r *roundRobin) getNext() string {
+	r.lock.Lock()
+
+	// get the current url
+	url := r.urls[r.next]
+
+	// increase the index
+	if r.next < r.len-1 {
+		r.next++
+	} else {
+		r.next = 0
+	}
+
+	r.lock.Unlock()
+
+	return url
+}
+
 type HTTPStore struct {
 	cli  *http.Client
 	urls []string
