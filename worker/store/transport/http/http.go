@@ -48,44 +48,41 @@ func (r *roundRobin) getNext() string {
 }
 
 type HTTPStore struct {
-	cli  *http.Client
-	urls []string
-	next int
-	len  int
-	lock sync.Mutex
+	cli         *http.Client
+	searchUrls  *roundRobin
+	rewardsUrls *roundRobin
 }
 
-func NewHTTPStore(urls []string, cli *http.Client) *HTTPStore {
+// NewHTTPStore constructs a new HTTPStore with the given search and rewards urls.
+func NewHTTPStore(searchUrls []string, rewardsUrls []string, cli *http.Client) *HTTPStore {
 	return &HTTPStore{
-		cli:  cli,
-		urls: urls,
-		len:  len(urls),
+		cli:         cli,
+		searchUrls:  newRoundRobin(searchUrls),
+		rewardsUrls: newRoundRobin(rewardsUrls),
 	}
 }
 
-func (s *HTTPStore) inc() {
-	s.lock.Lock()
-	if s.next == s.len-1 {
-		s.next = 0
-	} else {
-		s.next++
-	}
-	s.lock.Unlock()
+// NewHTTPStoreSearch creates a new HTTPStore only with search urls.
+func NewHTTPStoreSearch(searchUrls []string, cli *http.Client) *HTTPStore {
+	return NewHTTPStore(searchUrls, nil, cli)
+}
+
+// NewHTTPStoreRewards creates a new HTTPStore only with rewards urls.
+func NewHTTPStoreRewards(rewardsUrls []string, cli *http.Client) *HTTPStore {
+	return NewHTTPStore(nil, rewardsUrls, cli)
 }
 
 func (s *HTTPStore) GetRewardsSession(ctx context.Context) (store.RewardStore, error) {
-	s.inc()
 	return &RewardStore{&HTTPStoreSession{
 		cli: s.cli,
-		url: s.urls[s.next],
+		url: s.rewardsUrls.getNext(),
 	}}, nil
 }
 
 func (s *HTTPStore) GetSearchSession(ctx context.Context) (store.SearchStore, error) {
-	s.inc()
 	return &SearchStore{&HTTPStoreSession{
 		cli: s.cli,
-		url: s.urls[s.next],
+		url: s.searchUrls.getNext(),
 	}}, nil
 }
 
