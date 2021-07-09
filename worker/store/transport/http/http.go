@@ -94,7 +94,7 @@ type HTTPStoreSession struct {
 func (s *HTTPStoreSession) call(ctx context.Context, name string, in interface{}) error {
 	buff := new(bytes.Buffer)
 	enc := json.NewEncoder(buff)
-	buff.WriteString(`{"jsonrpc": "2.0", "id": 1, "method": "` + name + `", "params": `)
+	buff.WriteString(`{"jsonrpc":"2.0","id":1,"method":"` + name + `","params":`)
 	if err := enc.Encode(in); err != nil {
 		return err
 	}
