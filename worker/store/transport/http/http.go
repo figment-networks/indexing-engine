@@ -86,12 +86,15 @@ func (s *HTTPStore) GetSearchSession(ctx context.Context) (store.SearchStore, er
 	}}, nil
 }
 
+// HTTPStoreSession contains common logic for Store structs (SearchStore and RewardStore).
 type HTTPStoreSession struct {
 	cli *http.Client
 	url string
 }
 
+// call sends the JSON RPC request with the given `in` data.
 func (s *HTTPStoreSession) call(ctx context.Context, name string, in interface{}) error {
+	// create the JSON request data
 	buff := new(bytes.Buffer)
 	enc := json.NewEncoder(buff)
 	buff.WriteString(`{"jsonrpc":"2.0","id":1,"method":"` + name + `","params":`)
@@ -100,6 +103,7 @@ func (s *HTTPStoreSession) call(ctx context.Context, name string, in interface{}
 	}
 	buff.WriteString(`}`)
 
+	// send the request
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, s.url, buff)
 	if err != nil {
 		return err
