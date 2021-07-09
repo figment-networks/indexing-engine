@@ -6,17 +6,14 @@ import (
 	"github.com/figment-networks/indexing-engine/structs"
 )
 
-type RewardStoreCaller interface {
+type StoreCaller interface {
+	GetSearchSession(ctx context.Context) (SearchStore, error)
 	GetRewardsSession(ctx context.Context) (RewardStore, error)
 }
 
 type RewardStore interface {
 	StoreClaimedRewards(ctx context.Context, rwds []structs.ClaimedReward) error
 	StoreUnclaimedRewards(ctx context.Context, rwds []structs.UnclaimedReward) error
-}
-
-type SearchStoreCaller interface {
-	GetSearchSession(ctx context.Context) (SearchStore, error)
 }
 
 type SearchStore interface {
