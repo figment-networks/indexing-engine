@@ -1,4 +1,4 @@
-package ranged
+package worker
 
 import (
 	"sync"
