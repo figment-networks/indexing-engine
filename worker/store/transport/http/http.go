@@ -12,62 +12,98 @@ import (
 	"github.com/figment-networks/indexing-engine/worker/store"
 )
 
-type HTTPStore struct {
-	cli  *http.Client
+// roundRobin can be used to get the next url from a list of given urls,
+// starting with the first.
+type roundRobin struct {
 	urls []string
 	next int
 	len  int
 	lock sync.Mutex
 }
 
-func NewHTTPStore(urls []string, cli *http.Client) *HTTPStore {
-	return &HTTPStore{
-		cli:  cli,
+func newRoundRobin(urls []string) *roundRobin {
+	return &roundRobin{
 		urls: urls,
 		len:  len(urls),
 	}
 }
 
-func (s *HTTPStore) inc() {
-	s.lock.Lock()
-	if s.next == s.len-1 {
-		s.next = 0
+// getNext returns the next url in the list.
+func (r *roundRobin) getNext() string {
+	r.lock.Lock()
+
+	// get the current url
+	url := r.urls[r.next]
+
+	// increase the index
+	if r.next < r.len-1 {
+		r.next++
 	} else {
-		s.next++
+		r.next = 0
 	}
-	s.lock.Unlock()
+
+	r.lock.Unlock()
+
+	return url
+}
+
+type HTTPStore struct {
+	cli         *http.Client
+	searchUrls  *roundRobin
+	rewardsUrls *roundRobin
+}
+
+// NewHTTPStore constructs a new HTTPStore with the given search and rewards urls.
+func NewHTTPStore(searchUrls []string, rewardsUrls []string, cli *http.Client) *HTTPStore {
+	return &HTTPStore{
+		cli:         cli,
+		searchUrls:  newRoundRobin(searchUrls),
+		rewardsUrls: newRoundRobin(rewardsUrls),
+	}
+}
+
+// NewHTTPStoreSearch creates a new HTTPStore only with search urls.
+func NewHTTPStoreSearch(searchUrls []string, cli *http.Client) *HTTPStore {
+	return NewHTTPStore(searchUrls, nil, cli)
+}
+
+// NewHTTPStoreRewards creates a new HTTPStore only with rewards urls.
+func NewHTTPStoreRewards(rewardsUrls []string, cli *http.Client) *HTTPStore {
+	return NewHTTPStore(nil, rewardsUrls, cli)
 }
 
 func (s *HTTPStore) GetRewardsSession(ctx context.Context) (store.RewardStore, error) {
-	s.inc()
 	return &RewardStore{&HTTPStoreSession{
 		cli: s.cli,
-		url: s.urls[s.next],
+		url: s.rewardsUrls.getNext(),
 	}}, nil
 }
 
 func (s *HTTPStore) GetSearchSession(ctx context.Context) (store.SearchStore, error) {
-	s.inc()
 	return &SearchStore{&HTTPStoreSession{
 		cli: s.cli,
-		url: s.urls[s.next],
+		url: s.searchUrls.getNext(),
 	}}, nil
 }
 
+// HTTPStoreSession contains common logic for Store structs (SearchStore and RewardStore).
 type HTTPStoreSession struct {
 	cli *http.Client
 	url string
 }
 
+// call sends the JSON RPC request with the given `in` data.
 func (s *HTTPStoreSession) call(ctx context.Context, name string, in interface{}) error {
+	// create the JSON request data
 	buff := new(bytes.Buffer)
 	enc := json.NewEncoder(buff)
-	buff.WriteString(`{"jsonrpc": "2.0", "id": 1, "method": "` + name + `", "params": `)
+	buff.WriteString(`{"jsonrpc":"2.0","id":1,"method":"` + name + `","params":`)
 	if err := enc.Encode(in); err != nil {
 		return err
 	}
 	buff.WriteString(`}`)
 
+	// send the request
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, s.url, buff)
 	if err != nil {
 		return err
